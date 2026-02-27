@@ -57,10 +57,19 @@ const App = () => {
   const [lastTriggeredScanTime, setLastTriggeredScanTime] = useState<number>(0);
   const [isAuditing, setIsAuditing] = useState(false);
   const [currentGuideline, setCurrentGuideline] = useState<string | null>(null);
-  // 전문가 도구 상태
   const [selectedGuidelineInfo, setSelectedGuidelineInfo] = useState<string | null>(null);
   const [isLinearView, setIsLinearView] = useState(false);
   const [isImageAltView, setIsImageAltView] = useState(false);
+
+  const propPanelRef = useRef<HTMLDivElement>(null);
+  const guidelineInfoRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const collapsedByUser = useRef<Set<string>>(new Set());
+  const isPopup = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'popup', []);
+  const sourceWindowId = useMemo(() => {
+    const id = new URLSearchParams(window.location.search).get('windowId');
+    return id ? parseInt(id) : null;
+  }, []);
 
   const toggleCSS = () => {
     const nextState = !isLinearView;
@@ -85,28 +94,107 @@ const App = () => {
       });
     }
   };
-  
-  const isPopup = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'popup', []);
-  const sourceWindowId = useMemo(() => {
-    const id = new URLSearchParams(window.location.search).get('windowId');
-    return id ? parseInt(id) : null;
+
+  // Accessibility helper for Enter/Space interaction
+  const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      callback();
+    }
+  };
+
+  // Global Keyboard Handlers (ESC to close panels)
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsPropPanelOpen(false);
+        setSelectedGuidelineInfo(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  // 여러 창(사이드 패널, 팝업) 간의 데이터 실시간 동기화
+  // Focus Restore logic
+  useEffect(() => {
+    if (!isPropPanelOpen && !selectedGuidelineInfo && lastFocusedRef.current) {
+      lastFocusedRef.current.focus();
+      lastFocusedRef.current = null;
+    }
+  }, [isPropPanelOpen, selectedGuidelineInfo]);
+
+  // Focus Traps
+  useEffect(() => {
+    if (isPropPanelOpen && propPanelRef.current) {
+      lastFocusedRef.current = document.activeElement as HTMLElement;
+      const focusableElements = propPanelRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements.length > 0) {
+        (focusableElements[0] as HTMLElement).focus();
+      }
+    }
+  }, [isPropPanelOpen]);
+
+  useEffect(() => {
+    if (selectedGuidelineInfo && guidelineInfoRef.current) {
+      lastFocusedRef.current = document.activeElement as HTMLElement;
+      const focusableElements = guidelineInfoRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements.length > 0) {
+        (focusableElements[0] as HTMLElement).focus();
+      }
+    }
+  }, [selectedGuidelineInfo]);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsPropPanelOpen(false);
+        setSelectedGuidelineInfo(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  // Focus Traps
+  useEffect(() => {
+    if (isPropPanelOpen && propPanelRef.current) {
+      const focusableElements = propPanelRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements.length > 0) {
+        (focusableElements[0] as HTMLElement).focus();
+      }
+    }
+  }, [isPropPanelOpen]);
+
+  useEffect(() => {
+    if (selectedGuidelineInfo && guidelineInfoRef.current) {
+      const focusableElements = guidelineInfoRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements.length > 0) {
+        (focusableElements[0] as HTMLElement).focus();
+      }
+    }
+  }, [selectedGuidelineInfo]);
+
+  // Sync state between windows
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.storage) return;
-
     const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
       if (areaName === 'local' && changes['abt-storage']) {
-        console.log("ABT: Storage changed in another window, rehydrating store...");
         (useStore.persist as any).rehydrate();
       }
     };
-
     chrome.storage.onChanged.addListener(storageListener);
     return () => chrome.storage.onChanged.removeListener(storageListener);
   }, []);
 
+  // Track active tab
   useEffect(() => {
     const updateCurrentTab = () => {
       if (typeof chrome !== 'undefined' && chrome.tabs) {
@@ -127,18 +215,13 @@ const App = () => {
     };
 
     updateCurrentTab();
-
     if (typeof chrome !== 'undefined' && chrome.tabs) {
       const tabListener = (tabId: number, changeInfo: any, tab: chrome.tabs.Tab) => {
-        if (changeInfo.status === 'complete' && tab.active) {
-          updateCurrentTab();
-        }
+        if (changeInfo.status === 'complete' && tab.active) updateCurrentTab();
       };
       const activeListener = () => updateCurrentTab();
-
       chrome.tabs.onUpdated.addListener(tabListener);
       chrome.tabs.onActivated.addListener(activeListener);
-
       return () => {
         chrome.tabs.onUpdated.removeListener(tabListener);
         chrome.tabs.onActivated.removeListener(activeListener);
@@ -151,13 +234,11 @@ const App = () => {
       setIsAuditing(true);
       setLastTriggeredScanTime(Date.now());
       
-      // Ensure we query the active tab directly from the renderer if runtime relay fails
       if (chrome.tabs) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0] && tabs[0].id) {
             chrome.tabs.sendMessage(tabs[0].id, { type: 'RUN_AUDIT' }, (response) => {
               if (chrome.runtime.lastError) {
-                // Content script might not be injected yet
                 chrome.scripting.executeScript({
                   target: { tabId: tabs[0].id },
                   files: ['engine/abt-engine.js']
@@ -169,42 +250,19 @@ const App = () => {
           }
         });
       } else {
-        // Fallback to background script relay
-        chrome.runtime.sendMessage({ 
-          type: 'RUN_AUDIT', 
-          windowId: isPopup ? sourceWindowId : null 
-        });
+        chrome.runtime.sendMessage({ type: 'RUN_AUDIT', windowId: isPopup ? sourceWindowId : null });
       }
-
       setTimeout(() => setIsAuditing(false), 10000);
     }
   };
 
   const sessions = useMemo(() => {
     const map = new Map<number, any>();
-    let currentOrigin: string | null = null;
-    try {
-      if (currentTabInfo?.url) {
-        currentOrigin = new URL(currentTabInfo.url).origin;
-      }
-    } catch (e) {}
-
-    // 최신 순으로 정렬하여 맵에 담음 (가장 최근의 pageInfo가 우선순위를 가짐)
     const sortedItems = [...items].sort((a, b) => (b.pageInfo?.scanId || 0) - (a.pageInfo?.scanId || 0));
     
     sortedItems.forEach(item => {
       const pInfo = item.pageInfo;
       if (!pInfo || !pInfo.scanId) return;
-      
-      // (선택 사항) 현재 사이트의 기록만 보고 싶다면 아래 필터를 유지하세요.
-      // 하지만 사용자가 '저장이 안 된다'고 느낄 수 있으므로 일단 모든 기록을 보여주도록 필터를 제거합니다.
-      /*
-      try {
-        const itemOrigin = new URL(pInfo.url).origin;
-        if (currentOrigin && itemOrigin !== currentOrigin) return;
-      } catch (e) {}
-      */
-
       if (!map.has(pInfo.scanId)) {
         map.set(pInfo.scanId, {
           ...pInfo,
@@ -213,20 +271,16 @@ const App = () => {
       }
     });
     return Array.from(map.values()).sort((a, b) => b.scanId - a.scanId);
-  }, [items, currentTabInfo]);
+  }, [items]);
 
   useEffect(() => {
     if (!currentTabInfo?.url) return;
-    
     const latestSessionForUrl = sessions.find(s => normalizeUrl(s.url) === normalizeUrl(currentTabInfo.url));
-    
     if (latestSessionForUrl) {
       const sessionTime = new Date(latestSessionForUrl.timestamp).getTime();
-      
       if (!selectedSessionId && !isManualDashboard && lastTriggeredScanTime === 0) {
         setSelectedSessionId(latestSessionForUrl.scanId);
-      }
-      else if (lastTriggeredScanTime > 0 && sessionTime > lastTriggeredScanTime - 1000) {
+      } else if (lastTriggeredScanTime > 0 && sessionTime > lastTriggeredScanTime - 1000) {
         setSelectedSessionId(latestSessionForUrl.scanId);
         setIsManualDashboard(false);
         setLastTriggeredScanTime(0);
@@ -235,11 +289,6 @@ const App = () => {
     }
   }, [currentTabInfo?.url, sessions, selectedSessionId, isManualDashboard, lastTriggeredScanTime]);
 
-  useEffect(() => {
-    setIsManualDashboard(false);
-  }, [currentTabInfo?.url]);
-
-  // 데이터가 모두 삭제되거나 현재 세션이 사라지면 초기 화면으로 복구
   useEffect(() => {
     if (items.length === 0) {
       setSelectedSessionId(null);
@@ -252,11 +301,9 @@ const App = () => {
   const toggleGroup = (gid: string) => {
     setExpandedGroups(prev => {
       if (prev.includes(gid)) {
-        // 사용자가 명시적으로 닫음
         collapsedByUser.current.add(gid);
         return prev.filter(id => id !== gid);
       } else {
-        // 사용자가 명시적으로 엶
         collapsedByUser.current.delete(gid);
         return [...prev, gid];
       }
@@ -273,9 +320,7 @@ const App = () => {
 
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.runtime) return;
-
     const handleMessage = (message: any) => {
-      console.log("ABT: UI received message", message.type);
       if (message.type === 'UPDATE_ABT_LIST_BATCH' || message.type === 'UPDATE_ABT_BATCH') {
         setIsConnected(true);
         addReportsBatch(message.items || message.data);
@@ -286,7 +331,6 @@ const App = () => {
         setCurrentGuideline(message.guideline_id);
         setIsAuditing(true);
       } else if (message.type === 'SCAN_FINISHED') {
-        console.log("ABT: Scan Finished", message.scanId);
         setIsAuditing(false);
         setSelectedSessionId(message.scanId);
         setIsManualDashboard(false);
@@ -295,10 +339,7 @@ const App = () => {
 
     const port = chrome.runtime.connect({ name: 'abt-sidepanel' });
     port.onMessage.addListener(handleMessage);
-    
-    const runtimeListener = (message: any) => {
-      handleMessage(message);
-    };
+    const runtimeListener = (message: any) => handleMessage(message);
     chrome.runtime.onMessage.addListener(runtimeListener);
     
     return () => {
@@ -310,15 +351,9 @@ const App = () => {
 
   const filteredItems = useMemo(() => {
     let result = items;
-    if (selectedSessionId) {
-      result = result.filter(i => i.pageInfo?.scanId === selectedSessionId);
-    }
-    if (activeTab !== "ALL") {
-      result = result.filter(i => i.guideline_id === activeTab);
-    }
-    if (statusFilter !== "ALL") {
-      result = result.filter(i => i.currentStatus === statusFilter);
-    }
+    if (selectedSessionId) result = result.filter(i => i.pageInfo?.scanId === selectedSessionId);
+    if (activeTab !== "ALL") result = result.filter(i => i.guideline_id === activeTab);
+    if (statusFilter !== "ALL") result = result.filter(i => i.currentStatus === statusFilter);
     return result;
   }, [items, selectedSessionId, activeTab, statusFilter]);
 
@@ -332,41 +367,23 @@ const App = () => {
     const result: {gid: string, label: string, items: ABTItem[]}[] = [];
     kwcagHierarchy.forEach(principle => {
       principle.items.forEach(item => {
-        result.push({
-          gid: item.id,
-          label: item.label,
-          items: itemMap[item.id] || []
-        });
+        result.push({ gid: item.id, label: item.label, items: itemMap[item.id] || [] });
       });
     });
     return result;
   }, [filteredItems]);
 
-  // 기록: 사용자가 수동으로 닫은 그룹 ID를 기억하여 강제 확장을 막음
-  const collapsedByUser = useRef<Set<string>>(new Set());
-
-  // 세션이 바뀌면 수동 닫힘 기록 초기화
   useEffect(() => {
-    collapsedByUser.current.clear();
-  }, [selectedSessionId]);
-
-  useEffect(() => {
-    const errorGids = allGroupedItems
-      .filter(g => g.items.some(i => i.currentStatus === '오류'))
-      .map(g => g.gid);
-    
+    const errorGids = allGroupedItems.filter(g => g.items.some(i => i.currentStatus === '오류')).map(g => g.gid);
     if (errorGids.length > 0) {
       setExpandedGroups(prev => {
-        // 이전에 사용자가 명시적으로 닫은 적이 없는 오류 그룹만 자동 확장
         const newGids = errorGids.filter(gid => !collapsedByUser.current.has(gid));
         return [...new Set([...prev, ...newGids])];
       });
     }
   }, [allGroupedItems]);
 
-  const sessionItems = useMemo(() => {
-    return items.filter(i => i.pageInfo?.scanId === selectedSessionId);
-  }, [items, selectedSessionId]);
+  const sessionItems = useMemo(() => items.filter(i => i.pageInfo?.scanId === selectedSessionId), [items, selectedSessionId]);
 
   const handleSaveComment = (id: string) => {
     updateItemStatus(id, items.find(i => i.id === id)?.currentStatus || "검토 필요", tempComment);
@@ -382,7 +399,7 @@ const App = () => {
 
   const generateMarkdownReport = async () => {
     const date = new Date().toLocaleDateString();
-    let md = `# 🛡️ ABT 접근성 진단 리포트 (${date})\n\n`;
+    let md = `# 🛡️ AAK 접근성 진단 리포트 (${date})\n\n`;
     const fails = sessionItems.filter(i => i.currentStatus === '오류').length;
     const inapps = sessionItems.filter(i => i.currentStatus === '부적절').length;
     const recs = sessionItems.filter(i => i.currentStatus === '수정 권고').length;
@@ -401,12 +418,12 @@ const App = () => {
         md += `- **주변 맥락:** *"${item.context.smartContext}"*\n\n`;
       });
     });
-    md += `---\n*Generated by ABT (A11Y Browser Tester) Desktop*`;
+    md += `---\n*Generated by AAK Workbench (A11Y Browser Tester)*`;
     
     if ('showSaveFilePicker' in window) {
       try {
         const handle = await (window as any).showSaveFilePicker({
-          suggestedName: `ABT_Report_${new Date().toISOString().split('T')[0]}.md`,
+          suggestedName: `AAK_Report_${new Date().toISOString().split('T')[0]}.md`,
           types: [{ description: 'Markdown File', accept: { 'text/markdown': ['.md'] } }],
         });
         const writable = await handle.createWritable();
@@ -435,7 +452,7 @@ const App = () => {
     });
   };
 
-  const handleDeleteSession = (e: React.MouseEvent, scanId: number) => {
+  const handleDeleteSession = (e: React.MouseEvent | React.KeyboardEvent, scanId: number) => {
     e.stopPropagation();
     if (window.confirm("이 진단 기록을 삭제하시겠습니까?")) {
       removeSessionById(scanId);
@@ -443,7 +460,6 @@ const App = () => {
   };
 
   const selectedItem = items.find(i => i.id === selectedId);
-
   const guidelineData = selectedGuidelineInfo && standardItemsDict ? standardItemsDict[selectedGuidelineInfo] : null;
 
   return (
@@ -457,7 +473,7 @@ const App = () => {
           </div>
         </div>
         <div className={styles.headerActions}>
-          <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="새 진단" className={styles.iconBtn}><PlusCircle size={16} /></button>
+          <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="새 진단" aria-label="새 진단 시작" className={styles.iconBtn}><PlusCircle size={16} /></button>
           
           {sessionItems.length > 0 && (isPopup ? (
             <button 
@@ -470,6 +486,7 @@ const App = () => {
                 }
               }} 
               title="사이드 패널로 돌리기" 
+              aria-label="사이드 패널로 돌리기"
               className={styles.iconBtn}
             >
               <PanelRightClose size={16} />
@@ -486,35 +503,35 @@ const App = () => {
                       width: 750,
                       height: 900
                     });
-                    
-                    if (winId) {
-                      chrome.runtime.sendMessage({ type: 'POP_OUT', windowId: winId });
-                    }
+                    if (winId) chrome.runtime.sendMessage({ type: 'POP_OUT', windowId: winId });
                   });
                 }
               }} 
               title="창 분리하기" 
+              aria-label="창 분리하기"
               className={styles.iconBtn}
             >
               <ExternalLink size={16} />
             </button>
           ))}
 
-          <button onClick={clearItems} title="전체 삭제" className={styles.iconBtn}><Trash2 size={16} /></button>
-          <button onClick={generateMarkdownReport} title="리포트 추출" className={`${styles.iconBtn} ${copyStatus ? styles.success : ''}`}><FileText size={16} /></button>
+          <button onClick={clearItems} title="전체 삭제" aria-label="모든 진단 기록 삭제" className={styles.iconBtn}><Trash2 size={16} /></button>
+          <button onClick={generateMarkdownReport} title="리포트 추출" aria-label="마크다운 리포트 추출" className={`${styles.iconBtn} ${copyStatus ? styles.success : ''}`}><FileText size={16} /></button>
         </div>
       </header>
 
       {isAuditing ? (
-        <div className={styles.dashboard}>
+        <div className={styles.dashboard} aria-busy="true" aria-live="polite">
           <div className={styles.hero}>
             <div className={styles.heroIcon} style={{ animationDuration: '1s' }}><RotateCcw size={48} /></div>
             <h2>Precision Audit in Progress</h2>
             {currentGuideline && (
-              <p style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '1rem', margin: '0.8rem 0' }}>
+
+              <p style={{ color: 'var(--accent-highlight)', fontWeight: 'bold', fontSize: '1rem', margin: '0.8rem 0' }}>
                 검사항목 {currentGuideline} 분석 중...
               </p>
             )}
+
             <p style={{ fontSize: '0.9rem', color: '#94a3b8', lineHeight: '1.6' }}>
               KWCAG 2.2 표준 지침에 따라<br/>페이지의 모든 요소를 정밀 진단하고 있습니다.
             </p>
@@ -534,9 +551,10 @@ const App = () => {
               </div>
             )}
             <button 
-              className={`${styles.startBtn} ${isAuditing ? styles.loading : ''}`} 
+              className={styles.startBtn} 
               onClick={handleStartAudit}
               disabled={isAuditing}
+              aria-label="진단 시작"
             >
               {isAuditing ? '진단 중...' : '진단 시작 (Start Audit)'}
             </button>
@@ -545,7 +563,15 @@ const App = () => {
                 <p>과거 진단 기록 ({sessions.length}건)</p>
                 <div className={styles.historyList}>
                   {sessions.map((s, idx) => (
-                    <div key={s.scanId} className={styles.historyItem} onClick={() => setSelectedSessionId(s.scanId)}>
+                    <div 
+                      key={s.scanId} 
+                      className={styles.historyItem} 
+                      onClick={() => setSelectedSessionId(s.scanId)}
+                      onKeyDown={(e) => handleKeyDown(e, () => setSelectedSessionId(s.scanId))}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${s.pageTitle}, ${formatRelativeTime(s.timestamp)} 진단 기록`}
+                    >
                       <div className={styles.historyInfo}>
                         <div className={styles.historyTimeRow}>
                           <span className={styles.historyBadge}>#{sessions.length - idx}</span>
@@ -558,7 +584,9 @@ const App = () => {
                         <button 
                           className={styles.deleteBtn} 
                           onClick={(e) => handleDeleteSession(e, s.scanId)}
+                          onKeyDown={(e) => { e.stopPropagation(); handleKeyDown(e, () => handleDeleteSession(e, s.scanId)); }}
                           title="삭제"
+                          aria-label="진단 기록 삭제"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -579,7 +607,11 @@ const App = () => {
         <div className={styles.workArea}>
           <div className={styles.sessionSelector}>
             <Clock size={12} />
-            <select value={selectedSessionId || ""} onChange={(e) => setSelectedSessionId(Number(e.target.value))}>
+            <select 
+              value={selectedSessionId || ""} 
+              onChange={(e) => setSelectedSessionId(Number(e.target.value))}
+              aria-label="진단 세션 선택"
+            >
               {sessions.map(s => (
                 <option key={s.scanId} value={s.scanId}>
                   {new Date(s.timestamp).toLocaleString()} ({s.pageTitle})
@@ -588,11 +620,39 @@ const App = () => {
             </select>
           </div>
 
-          <div className={styles.statsSummary}>
-            <div className={`${styles.statLine} ${statusFilter === 'ALL' ? styles.active : ''}`} onClick={() => setStatusFilter('ALL')}>전체 <span>{sessionItems.length}</span></div>
-            <div className={`${styles.statLine} ${styles.fail} ${statusFilter === '오류' ? styles.active : ''}`} onClick={() => setStatusFilter('오류')}>오류 <span>{sessionItems.filter(i => i.currentStatus === '오류').length}</span></div>
-            <div className={`${styles.statLine} ${styles.review} ${statusFilter === '검토 필요' ? styles.active : ''}`} onClick={() => setStatusFilter('검토 필요')}>검토 필요 <span>{sessionItems.filter(i => i.currentStatus === '검토 필요').length}</span></div>
-            <div className={`${styles.statLine} ${styles.pass} ${statusFilter === '적절' ? styles.active : ''}`} onClick={() => setStatusFilter('적절')}>검토 완료 <span>{sessionItems.filter(i => i.currentStatus === '적절').length}</span></div>
+          <div className={styles.statsSummary} role="tablist">
+            <button 
+              className={`${styles.statLine} ${statusFilter === 'ALL' ? styles.active : ''}`} 
+              onClick={() => setStatusFilter('ALL')}
+              role="tab"
+              aria-selected={statusFilter === 'ALL'}
+            >
+              전체 <span>{sessionItems.length}</span>
+            </button>
+            <button 
+              className={`${styles.statLine} ${styles.fail} ${statusFilter === '오류' ? styles.active : ''}`} 
+              onClick={() => setStatusFilter('오류')}
+              role="tab"
+              aria-selected={statusFilter === '오류'}
+            >
+              오류 <span>{sessionItems.filter(i => i.currentStatus === '오류').length}</span>
+            </button>
+            <button 
+              className={`${styles.statLine} ${styles.review} ${statusFilter === '검토 필요' ? styles.active : ''}`} 
+              onClick={() => setStatusFilter('검토 필요')}
+              role="tab"
+              aria-selected={statusFilter === '검토 필요'}
+            >
+              검토 필요 <span>{sessionItems.filter(i => i.currentStatus === '검토 필요').length}</span>
+            </button>
+            <button 
+              className={`${styles.statLine} ${styles.pass} ${statusFilter === '적절' ? styles.active : ''}`} 
+              onClick={() => setStatusFilter('적절')}
+              role="tab"
+              aria-selected={statusFilter === '적절'}
+            >
+              검토 완료 <span>{sessionItems.filter(i => i.currentStatus === '적절').length}</span>
+            </button>
           </div>
           
           <div className={styles.groupedList}>
@@ -602,7 +662,12 @@ const App = () => {
 
               return (
                 <section key={group.gid} className={styles.groupSection}>
-                  <header className={`${styles.groupHeader} ${hasError ? styles.hasError : ''}`} onClick={() => toggleGroup(group.gid)}>
+                  <button 
+                    className={`${styles.groupHeader} ${hasError ? styles.hasError : ''}`} 
+                    onClick={() => toggleGroup(group.gid)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`group-content-${group.gid}`}
+                  >
                     <div className={styles.headerLeft}>
                       {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       <span className={styles.gidLabel}>{group.gid} {group.label}</span>
@@ -621,7 +686,17 @@ const App = () => {
                                 const val = prompt("점수 입력 (0-100):", manualScore.toString());
                                 if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
                               }}
+                              onKeyDown={(e) => {
+                                e.stopPropagation();
+                                handleKeyDown(e, () => {
+                                  const val = prompt("점수 입력 (0-100):", manualScore.toString());
+                                  if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
+                                });
+                              }}
+                              tabIndex={0}
+                              role="button"
                               title="클릭하여 점수를 수정할 수 있습니다."
+                              aria-label={`수동 점수 ${manualScore}점, 수정하려면 클릭`}
                             >
                               {manualScore}점 (수동)
                             </span>
@@ -635,17 +710,15 @@ const App = () => {
                               e.stopPropagation();
                               alert("N/A 항목은 검출된 요소가 없어 점수를 저장할 수 없습니다.");
                             }}
+                            tabIndex={0}
+                            role="button"
+                            aria-label="N/A 항목"
                           >
                             N/A
                           </span>
                         );
 
-                        // Summary 항목(통과된 다수의 요소)의 가중치를 점수 계산에 반영
-                        let pass = 0;
-                        let fail = 0;
-                        let review = 0;
-                        let calcTotal = 0;
-
+                        let pass = 0, fail = 0, review = 0, calcTotal = 0;
                         group.items.forEach(i => {
                           const weight = (i as any).isSummary && (i as any).passCount ? (i as any).passCount : 1;
                           calcTotal += weight;
@@ -663,7 +736,17 @@ const App = () => {
                                 const val = prompt("수동 검사 점수 입력 (0-100):");
                                 if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
                               }}
+                              onKeyDown={(e) => {
+                                e.stopPropagation();
+                                handleKeyDown(e, () => {
+                                  const val = prompt("수동 검사 점수 입력 (0-100):");
+                                  if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
+                                });
+                              }}
+                              tabIndex={0}
+                              role="button"
                               title="자동 진단이 어려운 항목입니다. 클릭하여 직접 점수를 입력하세요."
+                              aria-label="수동 검사 필요, 점수를 입력하려면 클릭"
                             >
                               수동 검사 필요
                             </span>
@@ -672,7 +755,6 @@ const App = () => {
 
                         let score = 100;
                         const exhaustiveGids = ['1.1.1', '1.3.1', '1.4.3', '2.1.1', '2.4.2', '2.4.3', '2.5.3', '3.1.1', '3.3.2'];
-                        
                         if (exhaustiveGids.includes(group.gid)) {
                           score = Math.round(((pass * 100 + review * 50) / (calcTotal * 100)) * 100);
                         } else {
@@ -689,124 +771,144 @@ const App = () => {
                               const val = prompt("점수 직접 수정 (0-100):", score.toString());
                               if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
                             }}
+                            onKeyDown={(e) => {
+                              e.stopPropagation();
+                              handleKeyDown(e, () => {
+                                const val = prompt("점수 직접 수정 (0-100):", score.toString());
+                                if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
+                              });
+                            }}
+                            tabIndex={0}
+                            role="button"
                             title="클릭하여 점수를 직접 수정할 수 있습니다."
+                            aria-label={`진단 점수 ${score}점, 수정하려면 클릭`}
                           >
                             {score}점
                           </span>
                         );
                       })()}
-                      <span className={styles.countBadge}>{group.items.length}</span>
+                      <span className={styles.countBadge} aria-label={`검출 항목 ${group.items.length}개`}>{group.items.length}</span>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setSelectedGuidelineInfo(group.gid); }} 
                         className={styles.iconBtn}
                         title="지침 판정 기준 보기"
+                        aria-label={`${group.gid} 지침 판정 기준 보기`}
                         style={{ padding: '0.2rem' }}
                       >
                         <Info size={14} />
                       </button>
                     </div>
-                          </header>
+                  </button>
                           
-                          {isExpanded && (
-                            <div className={styles.groupContent}>
-                              {group.items.length === 0 ? (
-                                <div className={styles.emptyState}>검출된 항목이 없습니다.</div>
-                              ) : (
-                                group.items.map((item) => {
-                                  const isJudged = item.history.length > 1 || !!item.finalComment;
-                                  return (
-                                    <article 
-                                      key={item.id} 
-                                      onClick={() => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); }} 
-                                      className={`${styles.miniCard} ${selectedId === item.id ? styles.selected : ''} ${isJudged ? styles.judged : ''}`}
-                                    >
-                                      <div className={styles.cardLayout}>
-                                        {!isJudged && item.elementInfo.src && item.elementInfo.src !== 'N/A' && (
-                                          <div className={styles.thumbBox}><img src={item.elementInfo.src} alt="미리보기" /></div>
-                                        )}
-                                        <div className={styles.cardMain}>
-                                          <div className={styles.cardTop}>
-                                            <div className={`${styles.miniStatus} ${styles[item.currentStatus.replace(' ', '_')]}`}>{item.currentStatus}</div>
-                                            <div className={styles.quickJudge}>
-                                              <button className={styles.qPass} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '적절'); }} title="적절로 판정">적절</button>
-                                              <button className={styles.qFail} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '오류'); }} title="오류로 판정">오류</button>
-                                            </div>
-                                          </div>
-                                          <h3 className={isJudged ? styles.judgedTitle : ''}>{item.result?.message}</h3>
-                                          {!isJudged && (
-                                            <>
-                                              {item.guideline_id === '1.1.1' && (
-                                                <div className={styles.markupSnippet}>
-                                                  &lt;{item.elementInfo.tagName.toLowerCase()} <span className={styles.attrName}>{(item.elementInfo as any).sourceAttr || 'alt'}</span>=<span className={styles.attrVal}>"{item.elementInfo.alt || ''}"</span> ... /&gt;
-                                                </div>
-                                              )}
-                                              {item.guideline_id === '1.4.3' && (item.context as any).color && (
-                                                <div className={styles.contrastPreview} style={{ color: (item.context as any).color, backgroundColor: (item.context as any).backgroundColor }}>
-                                                  Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
-                                                </div>
-                                              )}
-                                            </>
-                                          )}
-                                          <code className={styles.selector}>{item.elementInfo.selector}</code>
+                  {isExpanded && (
+                    <div className={styles.groupContent} id={`group-content-${group.gid}`}>
+                      {group.items.length === 0 ? (
+                        <div className={styles.emptyState}>검출된 항목이 없습니다.</div>
+                      ) : (
+                        group.items.map((item) => {
+                          const isJudged = item.history.length > 1 || !!item.finalComment;
+                          return (
+                            <article 
+                              key={item.id} 
+                              onClick={() => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); }} 
+                              onKeyDown={(e) => handleKeyDown(e, () => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); })}
+                              tabIndex={0}
+                              role="button"
+                              aria-selected={selectedId === item.id}
+                              className={`${styles.miniCard} ${selectedId === item.id ? styles.selected : ''} ${isJudged ? styles.judged : ''}`}
+                            >
+                              <div className={styles.cardLayout}>
+                                {!isJudged && item.elementInfo.src && item.elementInfo.src !== 'N/A' && (
+                                  <div className={styles.thumbBox}><img src={item.elementInfo.src} alt="미리보기" /></div>
+                                )}
+                                <div className={styles.cardMain}>
+                                  <div className={styles.cardTop}>
+                                    <div className={`${styles.miniStatus} ${styles[item.currentStatus.replace(' ', '_')]}`}>{item.currentStatus}</div>
+                                    <div className={styles.quickJudge}>
+                                      <button className={styles.qPass} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '적절'); }} title="적절로 판정" aria-label="적절로 판정">적절</button>
+                                      <button className={styles.qFail} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '오류'); }} title="오류로 판정" aria-label="오류로 판정">오류</button>
+                                    </div>
+                                  </div>
+                                  <h3 className={isJudged ? styles.judgedTitle : ''}>{item.result?.message}</h3>
+                                  {!isJudged && (
+                                    <>
+                                      {item.guideline_id === '1.1.1' && (
+                                        <div className={styles.markupSnippet}>
+                                          &lt;{item.elementInfo.tagName.toLowerCase()} <span className={styles.attrName}>{(item.elementInfo as any).sourceAttr || 'alt'}</span>=<span className={styles.attrVal}>"{item.elementInfo.alt || ''}"</span> ... /&gt;
                                         </div>
+                                      )}
+                                      {item.guideline_id === '1.4.3' && (item.context as any).color && (
+                                        <div className={styles.contrastPreview} style={{ color: (item.context as any).color, backgroundColor: (item.context as any).backgroundColor }}>
+                                          Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  <code className={styles.selector}>{item.elementInfo.selector}</code>
+                                </div>
+                              </div>
+                              {selectedId === item.id && (
+                                <div className={styles.miniDetail}>
+                                  <div className={styles.smartContextView}>
+                                    {item.guideline_id === '1.1.1' ? (
+                                      <>
+                                        <span>...{item.context.smartContext.split(item.elementInfo.alt || "")[0]}</span>
+                                        <span className={styles.highlight}>[{((item.elementInfo as any).sourceAttr || 'alt')}="{item.elementInfo.alt || ''}"]</span>
+                                        <span>{item.context.smartContext.split(item.elementInfo.alt || "")[1]}...</span>
+                                      </>
+                                    ) : item.guideline_id === '1.3.2' && item.elementInfo.selector === 'outline' ? (
+                                      <div className={styles.outlineView}>
+                                        {(item.context as any).outline?.map((h: any, idx: number) => (
+                                          <div key={idx} className={`${styles.outlineItem} ${styles['h'+h.level]}`}>
+                                            <span className={styles.level}>H{h.level}</span>
+                                            <span className={styles.text}>{h.text || '(텍스트 없음)'}</span>
+                                          </div>
+                                        ))}
                                       </div>
-                                      {selectedId === item.id && (
-                                        <div className={styles.miniDetail}>
-                                          <div className={styles.smartContextView}>
-                                            {item.guideline_id === '1.1.1' ? (
-                                              <>
-                                                <span>...{item.context.smartContext.split(item.elementInfo.alt || "")[0]}</span>
-                                                <span className={styles.highlight}>[{((item.elementInfo as any).sourceAttr || 'alt')}="{item.elementInfo.alt || ''}"]</span>
-                                                <span>{item.context.smartContext.split(item.elementInfo.alt || "")[1]}...</span>
-                                              </>
-                                            ) : item.guideline_id === '1.3.2' && item.elementInfo.selector === 'outline' ? (
-                                              <div className={styles.outlineView}>
-                                                {(item.context as any).outline?.map((h: any, idx: number) => (
-                                                  <div key={idx} className={`${styles.outlineItem} ${styles['h'+h.level]}`}>
-                                                    <span className={styles.level}>H{h.level}</span>
-                                                    <span className={styles.text}>{h.text || '(텍스트 없음)'}</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            ) : (
-                                              <span>"{item.context.smartContext}"</span>
-                                            )}
-                                          </div>
-                                          <div className={styles.miniActions}>
-                                            <button onClick={(e) => { e.stopPropagation(); setJudgingId(item.id); setTempComment(item.finalComment); }}>
-                                              <Edit3 size={12} /> {item.finalComment ? '의견 수정' : '의견 작성'}
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }}>상세</button>
-                                          </div>
-                                        </div>
-                                      )}
-                                      {judgingId === item.id && (
-                                        <div className={styles.miniJudge} onClick={e => e.stopPropagation()}>
-                                          <textarea placeholder="의견을 입력하세요..." value={tempComment} onChange={e => setTempComment(e.target.value)} />
-                                          <div className={styles.judgeBtns}>
-                                            <button onClick={() => setJudgingId(null)} className={styles.cBtn}>취소</button>
-                                            <button onClick={() => handleSaveComment(item.id)} className={styles.sBtn}>저장</button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </article>
-                                  );
-                                })
+                                    ) : (
+                                      <span>"{item.context.smartContext}"</span>
+                                    )}
+                                  </div>
+                                  <div className={styles.miniActions}>
+                                    <button onClick={(e) => { e.stopPropagation(); setJudgingId(item.id); setTempComment(item.finalComment); }} aria-label={item.finalComment ? '의견 수정' : '의견 작성'}>
+                                      <Edit3 size={12} /> {item.finalComment ? '의견 수정' : '의견 작성'}
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }} aria-label="상세 정보 보기">상세</button>
+                                  </div>
+                                </div>
                               )}
-                            </div>
-                          )}
-                        </section>
-                      );
-                    })}
+                              {judgingId === item.id && (
+                                <div className={styles.miniJudge} onClick={e => e.stopPropagation()}>
+                                  <textarea 
+                                    placeholder="의견을 입력하세요..." 
+                                    value={tempComment} 
+                                    onChange={e => setTempComment(e.target.value)} 
+                                    aria-label="전문가 소견 입력"
+                                  />
+                                  <div className={styles.judgeBtns}>
+                                    <button onClick={() => setJudgingId(null)} className={styles.cBtn}>취소</button>
+                                    <button onClick={() => handleSaveComment(item.id)} className={styles.sBtn}>저장</button>
+                                  </div>
+                                </div>
+                              )}
+                            </article>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         </div>
       )}
 
       {selectedGuidelineInfo && guidelineData && (
-        <div className={styles.fullPropPanel}>
+        <div className={styles.fullPropPanel} ref={guidelineInfoRef} role="dialog" aria-modal="true" aria-label={`${selectedGuidelineInfo} 지침 상세 정보`}>
           <header>
             <h3>{selectedGuidelineInfo} {guidelineData.name || '지침 정보'}</h3>
-            <button onClick={() => setSelectedGuidelineInfo(null)}><X size={18} /></button>
+            <button onClick={() => setSelectedGuidelineInfo(null)} aria-label="닫기"><X size={18} /></button>
           </header>
           <div className={styles.propBody}>
             <section className={styles.guidelineSection}>
@@ -843,10 +945,10 @@ const App = () => {
       )}
 
       {isPropPanelOpen && selectedItem && (
-        <div className={styles.fullPropPanel}>
+        <div className={styles.fullPropPanel} ref={propPanelRef} role="dialog" aria-modal="true" aria-label="요소 상세 정보">
           <header>
             <h3>Detail View</h3>
-            <button onClick={() => setIsPropPanelOpen(false)}><X size={18} /></button>
+            <button onClick={() => setIsPropPanelOpen(false)} aria-label="닫기"><X size={18} /></button>
           </header>
           <div className={styles.propBody}>
             <section>
@@ -870,6 +972,7 @@ const App = () => {
           </div>
         </div>
       )}
+
       {/* 하단 플로팅 전문가 도구바 (Expert Tools) */}
       {selectedSessionId && !isAuditing && !isPopup && (
         <div className={styles.expertToolbar}>
@@ -878,6 +981,7 @@ const App = () => {
               <button 
                 onClick={toggleImageAlt} 
                 title={isImageAltView ? "이미지 원본 보기" : "이미지 숨기고 대체 텍스트(alt) 보기"} 
+                aria-label={isImageAltView ? "이미지 원본 보기" : "이미지 숨기고 대체 텍스트(alt) 보기"}
                 className={`${styles.toolBtn} ${isImageAltView ? styles.active : ''}`}
               >
                 <ImageIcon size={14} />
@@ -886,6 +990,7 @@ const App = () => {
               <button 
                 onClick={toggleCSS} 
                 title={isLinearView ? "CSS 켜기 (Restore Layout)" : "CSS 끄기 (Linearize Layout)"} 
+                aria-label={isLinearView ? "CSS 켜기 (Restore Layout)" : "CSS 끄기 (Linearize Layout)"}
                 className={`${styles.toolBtn} ${isLinearView ? styles.active : ''}`}
               >
                 <LayoutList size={14} />

@@ -10,6 +10,11 @@
   overflow: hidden;
   font-family: 'Pretendard', sans-serif;
   position: relative;
+
+  *:focus-visible {
+    outline: 2px solid $accent;
+    outline-offset: 2px;
+  }
 }
 
 .extHeader {
@@ -51,6 +56,7 @@
   font-size: $text-xs;
   font-weight: 700;
   transition: all 0.2s;
+  outline: none;
   &:hover { color: $text; background: $bg-h; }
   &.success { color: $pass; }
   &.active { color: $accent; background: $bg-h; }
@@ -109,7 +115,9 @@
     cursor: pointer;
     box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);
     margin-bottom: $space-4;
+    transition: all 0.2s;
     &:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    &:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   }
 
   .historyOption {
@@ -145,6 +153,7 @@
     justify-content: space-between;
     cursor: pointer;
     transition: all 0.2s;
+    outline: none;
     color: $text-m;
     width: 100%;
     box-sizing: border-box;
@@ -231,6 +240,7 @@
     border-bottom: 1px solid $border;
     .statLine {
       font-size: $text-xs; font-weight: 800; color: $text-m; cursor: pointer;
+      background: transparent; border: none; padding: 0; outline: none;
       span { background: $bg-h; padding: 2px $space-2; border-radius: $space-1; margin-left: 3px; }
       &.fail span { color: $fail; background: rgba(248, 113, 113, 0.1); }
       &.review span { color: $review; background: rgba(96, 165, 250, 0.1); }
@@ -248,7 +258,7 @@
     border-bottom: 1px solid $border;
     color: $text-d;
     select {
-      background: transparent; border: none; color: $text; font-size: $text-xs; font-weight: 700; cursor: pointer; outline: none; flex: 1;
+      background: $bg-s; border: none; color: $text; font-size: $text-xs; font-weight: 700; cursor: pointer; outline: none; flex: 1;
       option { background: $bg-s; color: $text; }
     }
   }
@@ -264,6 +274,10 @@
     cursor: pointer;
     background: $bg-s;
     transition: background 0.2s;
+    border: none;
+    width: 100%;
+    text-align: left;
+    outline: none;
     &:hover { background: $bg-h; }
     &.hasError { border-left: 3px solid $fail; }
     .headerLeft {
@@ -276,7 +290,7 @@
 }
 
 .scoreBadge {
-  font-size: $text-xs; font-weight: 800; padding: 2px $space-2; border-radius: $space-1; cursor: pointer; transition: all 0.2s;
+  font-size: $text-xs; font-weight: 800; padding: 2px $space-2; border-radius: $space-1; cursor: pointer; transition: all 0.2s; outline: none;
   &.good { background: rgba(34, 197, 94, 0.1); color: $pass; border: 1px solid transparent; }
   &.warning { background: rgba(234, 179, 8, 0.1); color: $warn; border: 1px solid transparent; }
   &.bad { background: rgba(239, 68, 68, 0.1); color: $fail; border: 1px solid transparent; }
@@ -302,10 +316,14 @@
   border: 1px solid $border;
   border-radius: 0.75rem;
   padding: $space-3;
+  width: 100%;
+  text-align: left;
+  outline: none;
+  border: none; // Reset button border
   cursor: pointer;
   transition: all 0.2s;
   &:hover { border-color: $text-d; }
-  &.selected { border-color: $accent; background: $selected; }
+  &.selected { border-color: $accent; background: $selected; border: 1px solid $accent; }
 
   &.judged {
     opacity: 0.6;
@@ -400,7 +418,7 @@
 
 .fullPropPanel {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: $bg-p; z-index: 100; display: flex; flex-direction: column;
-  header { padding: $space-4; border-bottom: 1px solid $border; display: flex; justify-content: space-between; align-items: center; h3 { font-size: $text-sm; margin: 0; color: $text; } button { background: transparent; border: none; color: $text-d; cursor: pointer; } }
+  header { padding: $space-4; border-bottom: 1px solid $border; display: flex; justify-content: space-between; align-items: center; h3 { font-size: $text-sm; margin: 0; color: $text; } button { background: transparent; border: none; color: $text-d; cursor: pointer; outline: none; } }
   .propBody { padding: $space-6; overflow-y: auto; display: flex; flex-direction: column; gap: $space-6; section { h4 { font-size: $text-xs; font-weight: 800; color: $text-d; text-transform: uppercase; margin-bottom: $space-2; } code { background: $bg-s; padding: $space-2; border-radius: $space-1; display: block; font-size: $text-xs; color: $accent; } p { font-size: $text-xs; line-height: 1.6; color: $text; } } }
   .histItem { margin-bottom: $space-4; padding: $space-2; background: $bg-s; border-radius: $space-1; span { font-size: $text-xs; color: $text-d; } strong { display: block; font-size: $text-xs; color: $text-m; margin: 2px 0; } p { font-size: $text-xs; margin: 0; } }
   .guidelineSection {
@@ -511,10 +529,11 @@
     }
 
     &.active {
-      background: rgba(56, 189, 248, 0.2);
-      color: $accent;
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      background: rgba($highlight-rgb, 0.2);
+      color: $highlight;
+      border: 1px solid rgba($highlight-rgb, 0.3);
     }
+
   }
 }
 
