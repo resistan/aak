@@ -550,6 +550,10 @@ const App = () => {
                 <span className={styles.pageUrl}>{currentTabInfo.url}</span>
               </div>
             )}
+            <div className={styles.refreshNotice}>
+              <AlertCircle size={14} />
+              <span>정확한 진단을 위해 페이지를 <strong>새로고침</strong>한 후 시작해 주세요.</span>
+            </div>
             <button 
               className={styles.startBtn} 
               onClick={handleStartAudit}
@@ -720,6 +724,7 @@ const App = () => {
 
                         let pass = 0, fail = 0, review = 0, calcTotal = 0;
                         group.items.forEach(i => {
+                          if (i.currentStatus === '참고자료') return; // 점수 계산에서 제외
                           const weight = (i as any).isSummary && (i as any).passCount ? (i as any).passCount : 1;
                           calcTotal += weight;
                           if (i.currentStatus === '적절') pass += weight;
@@ -727,7 +732,9 @@ const App = () => {
                           else if (['검토 필요', '수정 권고'].includes(i.currentStatus)) review += weight;
                         });
                         
-                        if (fail === 0 && review > 0 && group.items.some(i => i.currentStatus === '검토 필요')) {
+                        // '수동 검사 필요' 문구로 점수를 가리는 로직 완화 (1.1.1, 3.1.1 등 핵심 지침은 점수를 우선 표시)
+                        const skipManualBadgeGids = ['1.1.1', '3.1.1'];
+                        if (fail === 0 && review > 0 && group.items.some(i => i.currentStatus === '검토 필요') && !skipManualBadgeGids.includes(group.gid)) {
                           return (
                             <span 
                               className={`${styles.scoreBadge} ${styles.manual}`}
@@ -824,10 +831,12 @@ const App = () => {
                                 <div className={styles.cardMain}>
                                   <div className={styles.cardTop}>
                                     <div className={`${styles.miniStatus} ${styles[item.currentStatus.replace(' ', '_')]}`}>{item.currentStatus}</div>
-                                    <div className={styles.quickJudge}>
-                                      <button className={styles.qPass} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '적절'); }} title="적절로 판정" aria-label="적절로 판정">적절</button>
-                                      <button className={styles.qFail} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '오류'); }} title="오류로 판정" aria-label="오류로 판정">오류</button>
-                                    </div>
+                                    {item.elementInfo.selector !== 'outline' && (
+                                      <div className={styles.quickJudge}>
+                                        <button className={styles.qPass} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '적절'); }} title="적절로 판정" aria-label="적절로 판정">적절</button>
+                                        <button className={styles.qFail} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '오류'); }} title="오류로 판정" aria-label="오류로 판정">오류</button>
+                                      </div>
+                                    )}
                                   </div>
                                   <h3 className={isJudged ? styles.judgedTitle : ''}>{item.result?.message}</h3>
                                   {!isJudged && (
@@ -844,7 +853,11 @@ const App = () => {
                                       )}
                                     </>
                                   )}
-                                  <code className={styles.selector}>{item.elementInfo.selector}</code>
+                                  {item.elementInfo.selector === 'outline' ? (
+                                    <span className={styles.outlineLabel}>Heading Outline</span>
+                                  ) : (
+                                    <code className={styles.selector}>{item.elementInfo.selector}</code>
+                                  )}
                                 </div>
                               </div>
                               {selectedId === item.id && (
@@ -856,7 +869,7 @@ const App = () => {
                                         <span className={styles.highlight}>[{((item.elementInfo as any).sourceAttr || 'alt')}="{item.elementInfo.alt || ''}"]</span>
                                         <span>{item.context.smartContext.split(item.elementInfo.alt || "")[1]}...</span>
                                       </>
-                                    ) : item.guideline_id === '1.3.2' && item.elementInfo.selector === 'outline' ? (
+                                    ) : item.guideline_id === '2.4.2' && item.elementInfo.selector === 'outline' ? (
                                       <div className={styles.outlineView}>
                                         {(item.context as any).outline?.map((h: any, idx: number) => (
                                           <div key={idx} className={`${styles.outlineItem} ${styles['h'+h.level]}`}>
@@ -869,12 +882,14 @@ const App = () => {
                                       <span>"{item.context.smartContext}"</span>
                                     )}
                                   </div>
-                                  <div className={styles.miniActions}>
-                                    <button onClick={(e) => { e.stopPropagation(); setJudgingId(item.id); setTempComment(item.finalComment); }} aria-label={item.finalComment ? '의견 수정' : '의견 작성'}>
-                                      <Edit3 size={12} /> {item.finalComment ? '의견 수정' : '의견 작성'}
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }} aria-label="상세 정보 보기">상세</button>
-                                  </div>
+                                  {item.currentStatus !== '참고자료' && (
+                                    <div className={styles.miniActions}>
+                                      <button onClick={(e) => { e.stopPropagation(); setJudgingId(item.id); setTempComment(item.finalComment); }} aria-label={item.finalComment ? '의견 수정' : '의견 작성'}>
+                                        <Edit3 size={12} /> {item.finalComment ? '의견 수정' : '의견 작성'}
+                                      </button>
+                                      <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }} aria-label="상세 정보 보기">상세</button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {judgingId === item.id && (

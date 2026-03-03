@@ -103,6 +103,25 @@
     .pageTitle { font-size: $text-xs; font-weight: 700; color: $text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pageUrl { font-size: $text-xs; color: $text-d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   }
+  .refreshNotice {
+    background: rgba($warn, 0.1);
+    border: 1px solid rgba($warn, 0.2);
+    color: $warn;
+    padding: $space-2 $space-4;
+    border-radius: 0.75rem;
+    font-size: $text-xs;
+    margin-bottom: $space-4;
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    text-align: left;
+    width: 100%;
+    max-width: 400px;
+    line-height: 1.5;
+
+    svg { flex-shrink: 0; }
+    strong { font-weight: 800; }
+  }
 
   .startBtn {
     background: $accent;
@@ -350,12 +369,17 @@
 
     .cardTop {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: $space-2;
+      .miniStatus {
+        font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; text-transform: uppercase;
+        &.오류 { background: rgba($fail, 0.1); color: $fail; border: 1px solid rgba($fail, 0.2); }
+        &.적절 { background: rgba($pass, 0.1); color: $pass; border: 1px solid rgba($pass, 0.2); }
+        &.검토_필요 { background: rgba($review, 0.1); color: $review; border: 1px solid rgba($review, 0.2); }
+        &.수정_권고 { background: rgba($warn, 0.1); color: $warn; border: 1px solid rgba($warn, 0.2); }
+        &.참고자료 { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.2); }
+      }
       .quickJudge {
         display: flex; gap: $space-1; opacity: 0; transition: opacity 0.2s;
-        button {
-          font-size: $text-xs; font-weight: 800; padding: 2px $space-2; border-radius: $space-1; border: none; cursor: pointer; color: white; transition: transform 0.1s;
-          &:active { transform: scale(0.95); }
-        }
+        button { font-size: $text-xs; font-weight: 800; padding: 2px $space-2; border-radius: $space-1; border: none; cursor: pointer; color: white; transition: transform 0.1s; &:active { transform: scale(0.95); } }
         .qPass { background: #16a34a; &:hover { background: #15803d; } }
         .qFail { background: #dc2626; &:hover { background: #b91c1c; } }
       }
@@ -363,6 +387,7 @@
 
     h3 { font-size: $text-sm; font-weight: 700; color: $text; margin: 0 0 $space-1 0; line-height: 1.4; }
     .selector { font-size: $text-xs; color: $text-d; font-family: monospace; }
+    .outlineLabel { font-size: $text-xs; font-weight: 800; color: $accent; background: $bg-p; padding: 2px $space-2; border-radius: 4px; border: 1px solid rgba($accent, 0.3); }
   }
 
   &:hover .cardMain .cardTop .quickJudge { opacity: 1; }
@@ -539,3 +564,91 @@
 
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes loadingMove { 0% { left: -40%; } 100% { left: 100%; } }
+
+.contrastPanel {
+  position: absolute;
+  bottom: calc(100% + $space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  background: $bg-s;
+  border: 1px solid $border;
+  border-radius: 12px;
+  padding: $space-3;
+  width: 280px;
+  box-shadow: 0 4px 20px $shadow;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  z-index: 101;
+
+  .contrastHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid $border;
+    padding-bottom: $space-2;
+    h4 { margin: 0; font-size: $text-xs; color: $text; }
+    button { background: transparent; border: none; color: $text-d; cursor: pointer; outline: none; transition: color 0.2s; &:hover { color: $text; } }
+  }
+
+  .pickerRow {
+    display: flex;
+    gap: $space-2;
+    
+    .pickerBox {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: $space-1;
+      span { font-size: 10px; color: $text-m; text-align: center; }
+      .colorBtn {
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid $border;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.1s;
+        font-family: monospace;
+        font-size: 10px;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        outline: none;
+        &:hover { transform: scale(1.02); }
+        &:focus-visible { outline: 2px solid $accent; outline-offset: 2px; }
+      }
+    }
+  }
+
+  .resultRow {
+    background: $bg-p;
+    border-radius: 6px;
+    padding: $space-3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $space-1;
+    border: 1px solid $border;
+    
+    .ratio {
+      font-size: $text-lg;
+      font-weight: 800;
+      color: $text;
+      font-family: monospace;
+    }
+
+    .badges {
+      display: flex;
+      gap: $space-1;
+      span {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+        &.pass { background: rgba($pass, 0.1); color: $pass; border: 1px solid rgba($pass, 0.2); }
+        &.fail { background: rgba($fail, 0.1); color: $fail; border: 1px solid rgba($fail, 0.2); }
+      }
+    }
+  }
+}
