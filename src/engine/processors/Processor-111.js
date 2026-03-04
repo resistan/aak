@@ -77,16 +77,31 @@ class Processor111 {
     const tagName = el.tagName.toLowerCase();
     let accessibleName = "";
     let isDecorative = false;
+    let src = "";
 
     if (tagName === "svg") {
       const titleEl = el.querySelector("title");
       accessibleName = (el.getAttribute("aria-label") || (titleEl ? titleEl.textContent : "")).trim();
       isDecorative = el.getAttribute("aria-hidden") === "true" || el.getAttribute("focusable") === "false";
+      
+      // SVG 데이터 추출 (미리보기용)
+      try {
+        const svgClone = el.cloneNode(true);
+        svgClone.setAttribute("width", "100");
+        svgClone.setAttribute("height", "100");
+        const svgString = new XMLSerializer().serializeToString(svgClone);
+        const svgBase64 = window.btoa(unescape(encodeURIComponent(svgString)));
+        src = `data:image/svg+xml;base64,${svgBase64}`;
+      } catch (e) {
+        src = "SVG Data";
+      }
     } else if (tagName === "input" && el.type === "image") {
       accessibleName = (el.getAttribute("alt") || el.getAttribute("aria-label") || el.title || "").trim();
+      src = el.src;
     } else {
       const altAttr = el.getAttribute("alt");
       accessibleName = (altAttr || el.getAttribute("aria-label") || "").trim();
+      src = el.src;
       
       if (altAttr === "" || ["presentation", "none"].includes(el.getAttribute("role"))) {
         isDecorative = true;
@@ -170,7 +185,7 @@ class Processor111 {
       sourceAttr = "title";
     }
 
-    return this.createReport(el, status, message, rules, accessibleName, smartContext, functionalContext, isDecorative, el.src, sourceAttr);
+    return this.createReport(el, status, message, rules, accessibleName, smartContext, functionalContext, isDecorative, src, sourceAttr);
   }
 
   getFunctionalContext(el) {
