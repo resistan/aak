@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ActivitySquare, Scan, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered, Home, Plus } from 'lucide-react';
+import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered, Home } from 'lucide-react';
 import styles from './styles/App.module.scss';
 import { useStore, kwcagHierarchy, ABTItem } from './store/useStore';
 import rawStandards from '../engine/kwcag-standards.json';
@@ -46,8 +46,6 @@ const App = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [judgingId, setJudgingId] = useState<string | null>(null);
   const [tempComment, setTempComment] = useState("");
-  const [manualComment, setManualComment] = useState("");
-  const [selectedJudgeStatus, setSelectedJudgeStatus] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [activeTab, setActiveTab] = useState("ALL");
   const [copyStatus, setCopyStatus] = useState(false);
@@ -68,7 +66,6 @@ const App = () => {
   const [fgColor, setFgColor] = useState("#ffffff");
   const [bgColor, setBgColor] = useState("#000000");
   const [manualContrastName, setManualContrastName] = useState("");
-  const [manualEntryGid, setManualEntryGid] = useState<string | null>(null);
 
   const propPanelRef = useRef<HTMLDivElement>(null);
   const guidelineInfoRef = useRef<HTMLDivElement>(null);
@@ -444,43 +441,15 @@ const App = () => {
   const sessionItems = useMemo(() => items.filter(i => i.pageInfo?.scanId === selectedSessionId), [items, selectedSessionId]);
 
   const handleSaveComment = (id: string) => {
-    const item = items.find(i => i.id === id);
-    const finalStatus = selectedJudgeStatus || item?.currentStatus || "검토 필요";
-    updateItemStatus(id, finalStatus, tempComment);
+    updateItemStatus(id, items.find(i => i.id === id)?.currentStatus || "검토 필요", tempComment);
     setJudgingId(null);
     setTempComment("");
-    setSelectedJudgeStatus(null);
   };
 
   const handleJudge = (id: string, nextStatus: string) => {
     updateItemStatus(id, nextStatus, tempComment);
     setJudgingId(null);
     setTempComment("");
-    setSelectedJudgeStatus(null);
-  };
-  const handleSaveManualOpinion = (gid: string) => {
-    if (!selectedSessionId) return;
-    const session = sessions.find(s => s.scanId === selectedSessionId);
-    if (!session) return;
-
-    const finalStatus = selectedJudgeStatus || "검토 필요";
-    const manualReport = {
-      guideline_id: gid,
-      elementInfo: { tagName: "MANUAL", selector: "manual-entry" },
-      context: { smartContext: manualContrastName || "수동 추가 의견" },
-      result: { status: finalStatus, message: manualContrastName || "전문가가 직접 추가한 검토 의견입니다.", rules: ["Manual Entry"] },
-      finalComment: manualComment,
-      pageInfo: { ...session }
-    };
-
-    addReport(manualReport as any);
-    setManualEntryGid(null);
-    setManualContrastName("");
-    setManualComment("");
-    setManualEntryGid(null);
-    setManualContrastName("");
-    setTempComment("");
-    setSelectedJudgeStatus(null);
   };
 
   const generateMarkdownReport = async () => {
@@ -552,9 +521,9 @@ const App = () => {
     <div className={`${styles.container} ${isPopup ? styles.isPopup : ''}`}>
       <header className={styles.extHeader}>
         <div className={styles.brand}>
-          <ActivitySquare size={18} className={styles.logo} />
+          <Shield size={18} className={styles.logo} />
           <div className={styles.titleInfo}>
-            <h1>A11Y Assistant</h1>
+            <h1>AAK Workbench</h1>
             <span>{isPopup ? 'Window' : 'Extension'}</span>
           </div>
         </div>
@@ -634,7 +603,7 @@ const App = () => {
       ) : !selectedSessionId ? (
         <div className={styles.dashboard}>
           <div className={styles.hero}>
-            <div className={styles.heroIcon}><Scan size={48} /></div>
+            <div className={styles.heroIcon}><Shield size={48} /></div>
             <h2>Ready to Audit</h2>
             <p>현재 페이지의 접근성을 진단합니다.</p>
             {currentTabInfo && (
@@ -706,6 +675,10 @@ const App = () => {
               </div>
             )}
           </div>
+          <div className={styles.features}>
+            <div className={styles.featItem}><CheckCircle2 size={14} /> KWCAG 2.2 지침</div>
+            <div className={styles.featItem}><CheckCircle2 size={14} /> 실시간 판정</div>
+          </div>
         </div>
       ) : (
         <div className={styles.workArea}>
@@ -766,19 +739,15 @@ const App = () => {
 
               return (
                 <section key={group.gid} className={styles.groupSection}>
-                  <div 
+                  <button 
                     className={`${styles.groupHeader} ${hasError ? styles.hasError : ''}`} 
                     onClick={() => toggleGroup(group.gid)}
-                    onKeyDown={(e) => handleKeyDown(e, () => toggleGroup(group.gid))}
-                    role="button"
-                    tabIndex={0}
                     aria-expanded={isExpanded}
                     aria-controls={`group-content-${group.gid}`}
                   >
                     <div className={styles.headerLeft}>
                       {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       <span className={styles.gidLabel}>{group.gid} {group.label}</span>
-                      <span className={styles.countBadge} aria-label={`검출 항목 ${group.items.length}개`}>{group.items.length}</span>
                     </div>
                     <div className={styles.headerRight}>
                       {(() => {
@@ -898,23 +867,7 @@ const App = () => {
                           </span>
                         );
                       })()}
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          if (manualEntryGid === group.gid && isExpanded) {
-                            setManualEntryGid(null);
-                          } else {
-                            setManualEntryGid(group.gid);
-                            if (!isExpanded) toggleGroup(group.gid);
-                          }
-                        }} 
-                        className={`${styles.iconBtn} ${manualEntryGid === group.gid ? styles.active : ''}`}
-                        title="검토 의견 수동 추가"
-                        aria-label={`${group.gid} 검토 의견 수동 추가`}
-                        style={{ padding: '0.2rem' }}
-                      >
-                        <Plus size={14} />
-                      </button>
+                      <span className={styles.countBadge} aria-label={`검출 항목 ${group.items.length}개`}>{group.items.length}</span>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setSelectedGuidelineInfo(group.gid); }} 
                         className={styles.iconBtn}
@@ -925,29 +878,10 @@ const App = () => {
                         <Info size={14} />
                       </button>
                     </div>
-                  </div>
+                  </button>
                           
                   {isExpanded && (
                     <div className={styles.groupContent} id={`group-content-${group.gid}`}>
-                      {manualEntryGid === group.gid && (
-                        <div className={styles.manualEntrySection}>
-                          <div className={styles.manualEntryForm}>
-                            <div className={styles.formHeader}>
-                              <span>새 검토 의견 추가</span>
-                              <button onClick={() => { setManualEntryGid(null); setManualContrastName(""); setManualComment(""); setSelectedJudgeStatus(null); }} aria-label="닫기"><X size={14} /></button>
-                            </div>
-                            <input type="text" placeholder="항목 이름 (예: 누락된 팝업 타이틀)" value={manualContrastName} onChange={e => setManualContrastName(e.target.value)} className={styles.manualInput} />
-                            <textarea placeholder="평가 소견을 입력하세요..." value={manualComment} onChange={e => setManualComment(e.target.value)} aria-label="전문가 소견 입력" style={{ boxSizing: 'border-box', width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '8px', minHeight: '60px', marginTop: '8px', fontSize: '12px', color: 'var(--text-color)' }} />
-                            <div className={styles.formFooter}>
-                              <div className={styles.judgeStatusSelector}>
-                                <button className={`${styles.jsBtn} ${styles.pass} ${selectedJudgeStatus === '적절' ? styles.active : ''}`} onClick={() => setSelectedJudgeStatus('적절')}>적절</button>
-                                <button className={`${styles.jsBtn} ${styles.fail} ${selectedJudgeStatus === '오류' ? styles.active : ''}`} onClick={() => setSelectedJudgeStatus('오류')}>오류</button>
-                              </div>
-                              <button className={styles.saveBtn} onClick={() => handleSaveManualOpinion(group.gid)} disabled={!selectedJudgeStatus || !manualContrastName.trim()}>평가 저장</button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                       {group.gid === '1.1.1' && (
                         <div className={styles.manualEntrySection}>
                           <div className={styles.focusTrackerControls}>
@@ -1129,13 +1063,8 @@ const App = () => {
                                   </div>
                                   {item.currentStatus !== '참고자료' && (
                                     <div className={styles.miniActions}>
-                                      <button onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        setJudgingId(item.id); 
-                                        setTempComment(item.finalComment); 
-                                        setSelectedJudgeStatus(item.currentStatus === '검토 필요' ? null : item.currentStatus);
-                                      }} aria-label="전문가 판정 및 소견 기록">
-                                        <Edit3 size={12} /> {item.finalComment ? '판정 수정' : '전문가 판정'}
+                                      <button onClick={(e) => { e.stopPropagation(); setJudgingId(item.id); setTempComment(item.finalComment); }} aria-label={item.finalComment ? '의견 수정' : '의견 작성'}>
+                                        <Edit3 size={12} /> {item.finalComment ? '의견 수정' : '의견 작성'}
                                       </button>
                                       <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }} aria-label="상세 정보 보기">상세</button>
                                       {item.elementInfo.tagName === 'MANUAL' && (
@@ -1155,27 +1084,14 @@ const App = () => {
                               {judgingId === item.id && (
                                 <div className={styles.miniJudge} onClick={e => e.stopPropagation()}>
                                   <textarea 
-                                    placeholder="평가 소견을 입력하세요..." 
+                                    placeholder="의견을 입력하세요..." 
                                     value={tempComment} 
                                     onChange={e => setTempComment(e.target.value)} 
                                     aria-label="전문가 소견 입력"
-                                    style={{ boxSizing: 'border-box' }}
                                   />
                                   <div className={styles.judgeBtns}>
-                                    <div className={styles.judgeStatusSelector}>
-                                      <button 
-                                        className={`${styles.jsBtn} ${styles.pass} ${selectedJudgeStatus === '적절' ? styles.active : ''}`}
-                                        onClick={() => setSelectedJudgeStatus('적절')}
-                                      >적절</button>
-                                      <button 
-                                        className={`${styles.jsBtn} ${styles.fail} ${selectedJudgeStatus === '오류' ? styles.active : ''}`}
-                                        onClick={() => setSelectedJudgeStatus('오류')}
-                                      >오류</button>
-                                    </div>
-                                    <div className={styles.actionBtns}>
-                                      <button onClick={() => { setJudgingId(null); setSelectedJudgeStatus(null); }} className={styles.cBtn}>취소</button>
-                                      <button onClick={() => handleSaveComment(item.id)} className={styles.sBtn} disabled={!selectedJudgeStatus && item.currentStatus === '검토 필요'}>평가 저장</button>
-                                    </div>
+                                    <button onClick={() => setJudgingId(null)} className={styles.cBtn}>취소</button>
+                                    <button onClick={() => handleSaveComment(item.id)} className={styles.sBtn}>저장</button>
                                   </div>
                                 </div>
                               )}

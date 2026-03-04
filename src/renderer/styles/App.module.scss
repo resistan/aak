@@ -1,5 +1,7 @@
 @use './variables' as *;
 
+*, *::before, *::after { box-sizing: border-box; }
+
 .container {
   display: flex;
   flex-direction: column;
@@ -325,14 +327,15 @@
     width: 100%;
     text-align: left;
     outline: none;
+    box-sizing: border-box;
     &:hover { background: $bg-h; }
     &.hasError { border-left: 3px solid $fail; }
     .headerLeft {
       display: flex; align-items: center; gap: $space-2; color: $text-m;
-      .gidLabel { font-size: $text-xs; font-weight: 700; color: $text; }
+      flex: 1; min-width: 0;
+      .gidLabel { font-size: $text-xs; font-weight: 700; color: $text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     }
-    .headerRight { display: flex; align-items: center; gap: $space-3; }
-    .countBadge { font-size: $text-xs; font-weight: 800; background: $bg-h; color: $text-m; padding: 2px $space-2; border-radius: $space-1; }
+    .headerRight { display: flex; align-items: center; gap: $space-1; flex-shrink: 0; }
   }
 }
 
@@ -355,8 +358,8 @@
   display: flex;
   flex-direction: column;
   gap: $space-3;
+  box-sizing: border-box;
   background: $bg-p;
-}
   .manualEntrySection {
     margin-bottom: $space-3;
     .focusTrackerControls {
@@ -424,6 +427,7 @@
       background: $bg-s;
       border: 1px solid $accent;
       border-radius: 0.75rem;
+      box-sizing: border-box;
       padding: $space-4;
       display: flex;
       flex-direction: column;
@@ -440,6 +444,8 @@
       }
 
       .manualInput {
+        box-sizing: border-box;
+        width: 100%;
         background: $bg-p;
         border: 1px solid $border;
         border-radius: 6px;
@@ -456,6 +462,31 @@
         align-items: center;
         margin-top: $space-2;
         .previewRatio { font-size: $text-sm; font-weight: 800; color: $accent; font-family: monospace; }
+        
+        .judgeStatusSelector {
+          display: flex;
+          gap: $space-1;
+          margin-bottom: 0;
+          width: 140px;
+          
+          .jsBtn {
+            flex: 1;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid $border;
+            background: $bg-s;
+            color: $text-m;
+            cursor: pointer;
+            transition: all 0.2s;
+            
+            &.pass.active { background: $pass; color: white; border-color: $pass; }
+            &.fail.active { background: #dc2626; color: white; border-color: #dc2626; }
+            &:hover:not(.active) { background: $bg-h; }
+          }
+        }
+
         .saveBtn {
           background: $accent;
           color: white;
@@ -465,11 +496,13 @@
           font-weight: 800;
           font-size: $text-xs;
           cursor: pointer;
-          &:hover { filter: brightness(1.1); }
+          &:hover:not(:disabled) { filter: brightness(1.1); }
+          &:disabled { opacity: 0.5; cursor: not-allowed; }
         }
       }
     }
   }
+}
 
   @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -580,14 +613,41 @@
 
   .miniJudge {
     margin-top: $space-3;
-    textarea { width: 100%; background: $bg-p; border: 1px solid $border; border-radius: $space-1; color: $text; font-size: $text-xs; padding: $space-2; min-height: 60px; outline: none; &:focus { border-color: $accent; } }
+  .judgeStatusSelector {
+    display: flex;
+    gap: $space-1;
+    margin-bottom: $space-2;
+    
+    .jsBtn {
+      flex: 1;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px;
+      border-radius: 4px;
+      border: 1px solid $border;
+      background: $bg-s;
+      color: $text-m;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &.pass.active { background: $pass; color: white; border-color: $pass; }
+      &.fail.active { background: #dc2626; color: white; border-color: #dc2626; }
+      &:hover:not(.active) { background: $bg-h; }
+    }
+  }
+
+    textarea { box-sizing: border-box; width: 100%; background: $bg-p; border: 1px solid $border; border-radius: $space-1; color: $text; font-size: $text-xs; padding: $space-2; min-height: 60px; outline: none; &:focus { border-color: $accent; } }
     .judgeBtns { 
-      display: flex; justify-content: flex-end; gap: $space-1; margin-top: $space-1; 
+      display: flex; justify-content: space-between; align-items: center; margin-top: $space-1; 
+      .actionBtns {
+        display: flex; gap: $space-1;
+      }
       button { 
         font-size: $text-xs; font-weight: 800; padding: $space-1 $space-3; border-radius: $space-1; border: none; cursor: pointer; transition: filter 0.2s;
         &.sBtn { background: $accent; color: white; } 
         &.cBtn { background: $bg-h; color: $text-m; }
-        &:hover { filter: brightness(1.1); }
+        &:hover:not(:disabled) { filter: brightness(1.1); }
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
       } 
     }
   }
