@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered } from 'lucide-react';
+import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered, Home } from 'lucide-react';
 import styles from './styles/App.module.scss';
 import { useStore, kwcagHierarchy, ABTItem } from './store/useStore';
 import rawStandards from '../engine/kwcag-standards.json';
@@ -528,52 +528,56 @@ const App = () => {
           </div>
         </div>
         <div className={styles.headerActions}>
-          {selectedSessionId !== null && (
-            <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="새 진단" aria-label="새 진단 시작" className={styles.iconBtn}><PlusCircle size={16} /></button>
-          )}
-          
-          {sessionItems.length > 0 && (isPopup ? (
-            <button 
-              onClick={() => {
-                if (typeof chrome !== 'undefined' && chrome.sidePanel) {
-                  const targetWinId = sourceWindowId || chrome.windows.WINDOW_ID_CURRENT;
-                  (chrome as any).sidePanel.open({ windowId: targetWinId }, () => {
-                    window.close();
-                  });
-                }
-              }} 
-              title="사이드 패널로 돌리기" 
-              aria-label="사이드 패널로 돌리기"
-              className={styles.iconBtn}
-            >
-              <PanelRightClose size={16} />
-            </button>
-          ) : (
-            <button 
-              onClick={() => {
-                if (typeof chrome !== 'undefined' && chrome.windows) {
-                  chrome.windows.getCurrent((currentWin) => {
-                    const winId = currentWin.id;
-                    chrome.windows.create({
-                      url: chrome.runtime.getURL(`sidepanel.html?mode=popup&windowId=${winId}`),
-                      type: 'popup',
-                      width: 750,
-                      height: 900
-                    });
-                    if (winId) chrome.runtime.sendMessage({ type: 'POP_OUT', windowId: winId });
-                  });
-                }
-              }} 
-              title="창 분리하기" 
-              aria-label="창 분리하기"
-              className={styles.iconBtn}
-            >
-              <ExternalLink size={16} />
-            </button>
-          ))}
+          {!isAuditing && (
+            <>
+              {selectedSessionId !== null && (
+                <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="홈으로 이동" aria-label="초기 화면으로 이동" className={styles.iconBtn}><Home size={16} /></button>
+              )}
+              
+              {sessionItems.length > 0 && (isPopup ? (
+                <button 
+                  onClick={() => {
+                    if (typeof chrome !== 'undefined' && chrome.sidePanel) {
+                      const targetWinId = sourceWindowId || chrome.windows.WINDOW_ID_CURRENT;
+                      (chrome as any).sidePanel.open({ windowId: targetWinId }, () => {
+                        window.close();
+                      });
+                    }
+                  }} 
+                  title="사이드 패널로 돌리기" 
+                  aria-label="사이드 패널로 돌리기"
+                  className={styles.iconBtn}
+                >
+                  <PanelRightClose size={16} />
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    if (typeof chrome !== 'undefined' && chrome.windows) {
+                      chrome.windows.getCurrent((currentWin) => {
+                        const winId = currentWin.id;
+                        chrome.windows.create({
+                          url: chrome.runtime.getURL(`sidepanel.html?mode=popup&windowId=${winId}`),
+                          type: 'popup',
+                          width: 750,
+                          height: 900
+                        });
+                        if (winId) chrome.runtime.sendMessage({ type: 'POP_OUT', windowId: winId });
+                      });
+                    }
+                  }} 
+                  title="창 분리하기" 
+                  aria-label="창 분리하기"
+                  className={styles.iconBtn}
+                >
+                  <ExternalLink size={16} />
+                </button>
+              ))}
 
-          {selectedSessionId !== null && (
-            <button onClick={generateMarkdownReport} title="리포트 추출" aria-label="마크다운 리포트 추출" className={`${styles.iconBtn} ${copyStatus ? styles.success : ''}`}><FileText size={16} /></button>
+              {selectedSessionId !== null && (
+                <button onClick={generateMarkdownReport} title="리포트 추출" aria-label="마크다운 리포트 추출" className={`${styles.iconBtn} ${copyStatus ? styles.success : ''}`}><FileText size={16} /></button>
+              )}
+            </>
           )}
         </div>
       </header>
@@ -1000,7 +1004,7 @@ const App = () => {
                               className={`${styles.miniCard} ${selectedId === item.id ? styles.selected : ''} ${isJudged ? styles.judged : ''}`}
                             >
                               <div className={styles.cardLayout}>
-                                {!isJudged && item.elementInfo.src && item.elementInfo.src !== 'N/A' && (
+                                {!isJudged && item.elementInfo.src && item.elementInfo.src !== 'N/A' && item.guideline_id !== '1.2.1' && (
                                   <div className={styles.thumbBox}><img src={item.elementInfo.src} alt="미리보기" /></div>
                                 )}
                                 <div className={styles.cardMain}>
