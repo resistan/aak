@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList } from 'lucide-react';
+import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette } from 'lucide-react';
 import styles from './styles/App.module.scss';
 import { useStore, kwcagHierarchy, ABTItem } from './store/useStore';
 import rawStandards from '../engine/kwcag-standards.json';
+import { getContrastRatio } from './utils/color';
 
 // Vite 번들링 결과물(default 래핑)을 안정적으로 파싱하는 글로벌 함수
 const getStandardItems = () => {
@@ -60,6 +61,10 @@ const App = () => {
   const [selectedGuidelineInfo, setSelectedGuidelineInfo] = useState<string | null>(null);
   const [isLinearView, setIsLinearView] = useState(false);
   const [isImageAltView, setIsImageAltView] = useState(false);
+  const [isContrastOpen, setIsContrastOpen] = useState(false);
+  const [fgColor, setFgColor] = useState("#ffffff");
+  const [bgColor, setBgColor] = useState("#000000");
+  const [manualContrastName, setManualContrastName] = useState("");
 
   const propPanelRef = useRef<HTMLDivElement>(null);
   const guidelineInfoRef = useRef<HTMLDivElement>(null);
@@ -94,6 +99,52 @@ const App = () => {
       });
     }
   };
+  const pickColor = async (type: 'fg' | 'bg') => {
+    if (!window.EyeDropper) {
+      alert("현재 브라우저에서 EyeDropper API를 지원하지 않습니다.");
+      return;
+    }
+    try {
+      const dropper = new window.EyeDropper();
+      const result = await dropper.open();
+      if (type === 'fg') setFgColor(result.sRGBHex);
+      else setBgColor(result.sRGBHex);
+    } catch (e) {
+      console.log("EyeDropper canceled or failed");
+    }
+  };
+  const handleAddManualContrast = () => {
+    if (!selectedSessionId) return;
+    const session = sessions.find(s => s.scanId === selectedSessionId);
+    if (!session) return;
+
+    const ratio = getContrastRatio(fgColor, bgColor);
+    const status = ratio >= 4.5 ? "적절" : "수정 권고";
+    const message = `[수동 추가] '${manualContrastName || '명도 대비 케이스'}'의 대비는 ${ratio}:1 입니다.`;
+
+    const manualReport = {
+      guideline_id: "1.4.3",
+      elementInfo: { tagName: "MANUAL", selector: "manual-contrast" },
+      context: { 
+        smartContext: manualContrastName || "수동 측정 항목", 
+        color: fgColor, 
+        backgroundColor: bgColor 
+      },
+      result: { status, message, rules: ["Manual Contrast Check"] },
+      pageInfo: { ...session }
+    };
+
+    addReport(manualReport);
+    setManualContrastName("");
+    setIsContrastOpen(false);
+  };
+  const deleteManualItem = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (window.confirm("이 수동 추가 항목을 삭제하시겠습니까?")) {
+      setItems(items.filter(i => i.id !== id));
+      if (selectedId === id) setSelectedId(null);
+    }
+  };
 
   // Accessibility helper for Enter/Space interaction
   const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
@@ -109,6 +160,7 @@ const App = () => {
       if (e.key === 'Escape') {
         setIsPropPanelOpen(false);
         setSelectedGuidelineInfo(null);
+        setIsContrastOpen(false);
       }
     };
     window.addEventListener('keydown', handleEsc);
@@ -367,7 +419,21 @@ const App = () => {
     const result: {gid: string, label: string, items: ABTItem[]}[] = [];
     kwcagHierarchy.forEach(principle => {
       principle.items.forEach(item => {
-        result.push({ gid: item.id, label: item.label, items: itemMap[item.id] || [] });
+        const itemsInGroup = itemMap[item.id] || [];
+        
+        // [정렬 로직] MANUAL 항목 우선 배치 + 최신순 정렬
+        const sortedItems = [...itemsInGroup].sort((a, b) => {
+          const aManual = a.elementInfo?.tagName === 'MANUAL';
+          const bManual = b.elementInfo?.tagName === 'MANUAL';
+          if (aManual && !bManual) return -1;
+          if (!aManual && bManual) return 1;
+          // 시간순 (최신 항목 상단)
+          const aTime = new Date(a.pageInfo?.timestamp || 0).getTime();
+          const bTime = new Date(b.pageInfo?.timestamp || 0).getTime();
+          return bTime - aTime;
+        });
+        
+        result.push({ gid: item.id, label: item.label, items: sortedItems });
       });
     });
     return result;
@@ -809,6 +875,61 @@ const App = () => {
                           
                   {isExpanded && (
                     <div className={styles.groupContent} id={`group-content-${group.gid}`}>
+                      {group.gid === '1.4.3' && (
+                        <div className={styles.manualEntrySection}>
+                          {!isContrastOpen ? (
+                            <button 
+                              className={styles.addCaseBtn} 
+                              onClick={() => setIsContrastOpen(true)}
+                              title="수동 명도 대비 측정 항목 추가"
+                            >
+                              <PlusCircle size={14} /> 명도 대비 케이스 추가
+                            </button>
+                          ) : (
+                            <div className={styles.manualEntryForm}>
+                              <div className={styles.formHeader}>
+                                <span>새 명도 대비 측정</span>
+                                <button onClick={() => { setIsContrastOpen(false); setManualContrastName(""); }} aria-label="닫기"><X size={14} /></button>
+                              </div>
+                              <input 
+                                type="text" 
+                                placeholder="항목 이름 (예: 메인 배너 텍스트)" 
+                                value={manualContrastName}
+                                onChange={e => setManualContrastName(e.target.value)}
+                                className={styles.manualInput}
+                              />
+                              <div className={styles.pickerRow}>
+                                <div className={styles.pickerBox}>
+                                  <span>전경색</span>
+                                  <button 
+                                    className={styles.colorBtn} 
+                                    style={{ backgroundColor: fgColor }} 
+                                    onClick={() => pickColor('fg')}
+                                    title="전경색 추출"
+                                  >
+                                    {fgColor.toUpperCase()}
+                                  </button>
+                                </div>
+                                <div className={styles.pickerBox}>
+                                  <span>배경색</span>
+                                  <button 
+                                    className={styles.colorBtn} 
+                                    style={{ backgroundColor: bgColor }} 
+                                    onClick={() => pickColor('bg')}
+                                    title="배경색 추출"
+                                  >
+                                    {bgColor.toUpperCase()}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className={styles.formFooter}>
+                                <div className={styles.previewRatio}>대비 {getContrastRatio(fgColor, bgColor)}:1</div>
+                                <button className={styles.saveBtn} onClick={handleAddManualContrast}>저장</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {group.items.length === 0 ? (
                         <div className={styles.emptyState}>검출된 항목이 없습니다.</div>
                       ) : (
@@ -888,6 +1009,16 @@ const App = () => {
                                         <Edit3 size={12} /> {item.finalComment ? '의견 수정' : '의견 작성'}
                                       </button>
                                       <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }} aria-label="상세 정보 보기">상세</button>
+                                      {item.elementInfo.tagName === 'MANUAL' && (
+                                        <button 
+                                          className={styles.deleteManualBtn} 
+                                          onClick={(e) => deleteManualItem(e, item.id)}
+                                          title="항목 삭제"
+                                          aria-label="수동 항목 삭제"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -995,12 +1126,12 @@ const App = () => {
             <div className={styles.toolGroup}>
               <button 
                 onClick={toggleImageAlt} 
-                title={isImageAltView ? "이미지 원본 보기" : "이미지 숨기고 대체 텍스트(alt) 보기"} 
-                aria-label={isImageAltView ? "이미지 원본 보기" : "이미지 숨기고 대체 텍스트(alt) 보기"}
+                title={isImageAltView ? "이미지 보기 (Show Images)" : "대체텍스트 보기 (Show Alt Texts)"} 
+                aria-label={isImageAltView ? "이미지 보기" : "대체텍스트 보기"}
                 className={`${styles.toolBtn} ${isImageAltView ? styles.active : ''}`}
               >
                 <ImageIcon size={14} />
-                <span>{isImageAltView ? "원본 뷰" : "대체 텍스트(Alt) 뷰"}</span>
+                <span>{isImageAltView ? "이미지 보기" : "대체텍스트 보기"}</span>
               </button>
               <button 
                 onClick={toggleCSS} 
