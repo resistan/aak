@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AAK Workbench (KWCAG)",
   "short_name": "AAK Workbench",
-  "version": "1.0.0",
+  "version": "0.6.5",
   "permissions": [
     "sidePanel",
     "storage",
