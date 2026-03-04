@@ -69,10 +69,10 @@ class Processor311 {
           message = `lang 속성값("${targetLang}")이 일반적인 언어 코드 목록에 없습니다. 오타나 비표준 코드인지, 그리고 페이지 본문 언어와 일치하는지 확인하세요.`;
           rules.push("Rule 3.1.1 (Uncommon lang code check)");
         } else {
-          // 화이트리스트에 있는 유효한 언어 코드인 경우에도 최종적으로 본문과 일치하는지는 사람이 확인해야 함
+          // 기술적 유효성이 확인된 경우. 사용자의 요청에 따라 '검토 필요' 상태를 유지하여 본문 대조를 유도함.
           status = "검토 필요";
-          message = `lang 속성값("${targetLang}")이 유효합니다. 선언된 언어와 실제 페이지 본문의 주요 언어가 일치하는지 확인하세요.`;
-          rules.push("Rule 3.1.1 (Manual Language Match Check)");
+          message = `기본 언어 코드("${targetLang}")가 기술적으로 유효합니다. 실제 페이지 본문의 주요 언어와 일치하는지 최종 확인해 주세요.`;
+          rules.push("Rule 3.1.1 (Technical Validity Passed - Manual Content Check Required)");
         }
       }
     }

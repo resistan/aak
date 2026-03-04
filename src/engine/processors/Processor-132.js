@@ -2,6 +2,7 @@
  * ABT Processor 1.3.2 (Meaningful Sequence)
  * 
  * KWCAG 2.2 지침 1.3.2 콘텐츠의 선형 구조
+ * 콘텐츠는 논리적인 순서로 읽히도록 마크업되어야 합니다. (헤딩 위계는 2.4.2에서 진단)
  * 콘텐츠는 논리적인 순서로 읽히도록 마크업되어야 하며, 특히 제목(Heading)의 위계가 올바라야 합니다.
  * 
  * [진단 범위]
@@ -9,9 +10,8 @@
  * - 문서 전체의 아웃라인 구조
  * 
  * [주요 로직]
- * - 제목 위계 검사: H1 다음에 H3가 오는 등 단계 건너뛰기 탐지
- * - 아웃라인 맵 생성: 페이지 전체의 제목 계층 구조를 데이터화하여 사이드 패널에 트리 뷰로 전달
- * - 시각적 순서 vs 마크업 순서: 보조 공학 기기가 해석하는 실제 순서를 검증
+ * - 시각적 순서 vs 마크업 순서: CSS order, direction 속성 등을 통한 논리적 맥락 유지 확인
+ * - Layout Table 탐지: 표를 이용한 레이아웃 구성 여부 확인
  */
 class Processor132 {
   constructor() {
@@ -50,40 +50,7 @@ class Processor132 {
         reports.push(this.createReport(table, "검토 필요", "레이아웃용 표가 감지되었습니다. CSS 레이아웃(Flex/Grid)으로 전환을 권장하며, 제거 시에도 선형 구조가 유지되는지 확인하세요."));
     }
 
-    // [단계 F] 헤딩 아웃라인 수집 (h1~h6) - 문서의 구조적 순서 확인
-    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    if (headings.length > 0) {
-      const outline = Array.from(headings).map(h => ({
-        level: parseInt(h.tagName.substring(1)),
-        text: h.innerText.trim(),
-        selector: this.utils.getSelector(h)
-      }));
-      
-      reports.push({
-        guideline_id: this.id,
-        elementInfo: { tagName: 'BODY', selector: 'outline' },
-        context: { smartContext: "페이지 헤딩 구조(Heading Outline) 분석 결과입니다.", outline: outline },
-        result: { status: "적절", message: `페이지 내에 총 ${headings.length}개의 헤딩이 존재합니다.` },
-        currentStatus: "적절",
-        history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: "헤딩 아웃라인 수집 완료" }]
-      });
-
-      // 헤딩 순서 논리성 검사
-      let prevLevel = 0;
-      for (const h of outline) {
-        if (prevLevel > 0 && h.level > prevLevel + 1) {
-          reports.push({
-            guideline_id: this.id,
-            elementInfo: { tagName: `H${h.level}`, selector: h.selector },
-            context: { smartContext: `이전 헤딩(H${prevLevel})에서 바로 H${h.level}로 건너뛰었습니다.` },
-            result: { status: "수정 권고", message: "헤딩 수준을 순차적으로 사용하는 것을 권장합니다 (예: h1 -> h2 -> h3)." },
-            currentStatus: "수정 권고",
-            history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: "헤딩 순서 건너뜀 탐지" }]
-          });
-        }
-        prevLevel = h.level;
-      }
-    }
+    // [단계 F] 헤딩 아웃라인 수집 로직 제거 (2.4.2로 이동됨)
     return reports;
   }
 

@@ -7,12 +7,12 @@
  * [진단 범위]
  * - <title> 요소 (Head)
  * - <iframe>, <frame> 요소
- * - <h1> 제목 요소 (구조적 대주제)
+ * - <h1> 제목 요소 및 전체 헤딩 구조 (h1~h6)
  * 
  * [주요 로직]
  * - 누락 체크: <title> 또는 프레임의 title 속성이 비어있는 경우 탐지
- * - 의미 없는 제목 필터링: 'untitled', '새 탭', 'iframe' 등 무의미한 기본값 사용 여부 검증
- * - 구조적 대주제 확인: 문서의 본질을 설명하는 H1 태그의 존재 여부를 함께 진단하여 신뢰도 향상
+ * - 의미 없는 제목 필터링: 무의미한 기본값(untitled 등) 사용 여부 검증
+ * - 헤딩 아웃라인 분석: 페이지 전체의 제목 계층 구조(h1~h6) 수집 및 단계 건너뛰기 탐지
  */
 class Processor242 {
   constructor() {
@@ -61,6 +61,41 @@ class Processor242 {
       reports.push(this.createPageReport("적절", "페이지 내에 구조적 대주제(<h1>)가 존재합니다.", "h1"));
     }
 
+    // [단계 F] 헤딩 아웃라인 수집 (h1~h6) - 문서의 구조적 순서 확인
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length > 0) {
+      const outline = Array.from(headings).map(h => ({
+        level: parseInt(h.tagName.substring(1)),
+        text: h.innerText.trim(),
+        selector: this.utils.getSelector(h)
+      }));
+      
+      reports.push({
+        guideline_id: this.id,
+        elementInfo: { tagName: 'BODY', selector: 'outline' },
+        context: { smartContext: "페이지 헤딩 구조(Heading Outline) 분석 결과입니다.", outline: outline },
+        result: { status: "참고자료", message: `페이지 내에 총 ${headings.length}개의 헤딩이 존재합니다.` },
+        currentStatus: "참고자료",
+        currentStatus: "적절",
+        history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: "헤딩 아웃라인 수집 완료" }]
+      });
+
+      // 헤딩 순서 논리성 검사
+      let prevLevel = 0;
+      for (const h of outline) {
+        if (prevLevel > 0 && h.level > prevLevel + 1) {
+          reports.push({
+            guideline_id: this.id,
+            elementInfo: { tagName: `H${h.level}`, selector: h.selector },
+            context: { smartContext: `이전 헤딩(H${prevLevel})에서 바로 H${h.level}로 건너뛰었습니다.` },
+            result: { status: "수정 권고", message: "헤딩 수준을 순차적으로 사용하는 것을 권장합니다 (예: h1 -> h2 -> h3)." },
+            currentStatus: "수정 권고",
+            history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: "헤딩 순서 건너뜀 탐지" }]
+          });
+        }
+        prevLevel = h.level;
+      }
+    }
     return reports;
   }
 
