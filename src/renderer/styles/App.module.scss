@@ -153,6 +153,37 @@
     p { font-size: $text-xs; line-height: 1.6; color: $text-m; margin-bottom: $space-4; }
   }
 
+  .historyHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: $space-4;
+    
+    p { margin-bottom: 0 !important; }
+  }
+
+  .deleteAllBtn {
+    background: transparent;
+    border: 1px solid $border;
+    color: $text-d;
+    cursor: pointer;
+    padding: $space-1 $space-2;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: $space-1;
+    font-size: 11px;
+    font-weight: 700;
+    transition: all 0.2s;
+    
+    &:hover {
+      color: #ef4444;
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.05);
+    }
+  }
+
   .historyList {
     display: flex;
     flex-direction: column;
@@ -331,6 +362,47 @@
 }
   .manualEntrySection {
     margin-bottom: $space-3;
+    .focusTrackerControls {
+      display: flex;
+      gap: $space-1;
+      width: 100%;
+
+      .focusToggleBtn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: $space-2;
+        padding: $space-2;
+        background: $bg-s;
+        border: 1px solid $accent;
+        border-radius: 8px;
+        color: $accent;
+        font-size: $text-xs;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover { background: rgba($accent, 0.05); }
+        &.active { background: $accent; color: white; }
+      }
+
+      .focusResetBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: $space-2;
+        background: $bg-s;
+        border: 1px solid $border;
+        border-radius: 8px;
+        color: $text-m;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover { background: $bg-h; color: $fail; border-color: $fail; }
+      }
+    }
+
     width: 100%;
 
     .addCaseBtn {
@@ -592,58 +664,6 @@
   }
 }
 
-.expertToolbar {
-  position: absolute;
-  bottom: $space-5;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  background: rgba(15, 23, 42, 0.85); 
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2); 
-  padding: $space-2 $space-4;
-  border-radius: 20px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 $space-1 $space-4 rgba(0, 0, 0, 0.4);
-  transition: transform 0.3s ease, opacity 0.3s ease;
-
-  .toolbarInner {
-    display: flex;
-    align-items: center;
-    gap: $space-4;
-  }
-
-  .toolGroup {
-    display: flex;
-    gap: $space-2;
-  }
-
-  .toolBtn {
-    display: flex;
-    align-items: center;
-    gap: $space-1;
-    background: transparent;
-    border: none;
-    color: $text-d;
-    font-size: $text-xs;
-    font-weight: 600;
-    padding: $space-1 $space-3;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: $text;
-    }
-
-    &.active {
-      background: rgba($highlight-rgb, 0.2);
-      color: $highlight;
-      border: 1px solid rgba($highlight-rgb, 0.3);
-    }
-
-  }
-}
 
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes loadingMove { 0% { left: -40%; } 100% { left: 100%; } }

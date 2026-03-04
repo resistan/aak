@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette } from 'lucide-react';
+import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered } from 'lucide-react';
 import styles from './styles/App.module.scss';
 import { useStore, kwcagHierarchy, ABTItem } from './store/useStore';
 import rawStandards from '../engine/kwcag-standards.json';
@@ -62,6 +62,7 @@ const App = () => {
   const [isLinearView, setIsLinearView] = useState(false);
   const [isImageAltView, setIsImageAltView] = useState(false);
   const [isContrastOpen, setIsContrastOpen] = useState(false);
+  const [isFocusTracking, setIsFocusTracking] = useState(false);
   const [fgColor, setFgColor] = useState("#ffffff");
   const [bgColor, setBgColor] = useState("#000000");
   const [manualContrastName, setManualContrastName] = useState("");
@@ -154,6 +155,28 @@ const App = () => {
     }
   };
 
+  const toggleFocusTracking = () => {
+    const nextState = !isFocusTracking;
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.sendMessage({ 
+        type: 'TOGGLE_FOCUS_TRACKING', 
+        enable: nextState,
+        windowId: isPopup ? sourceWindowId : null
+      }, (res) => {
+        if (res?.status === 'success') setIsFocusTracking(nextState);
+      });
+    }
+  };
+
+  const resetFocusPath = () => {
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.sendMessage({ 
+        type: 'RESET_FOCUS_TRACKING',
+        windowId: isPopup ? sourceWindowId : null
+      });
+    }
+  };
+
   // Global Keyboard Handlers (ESC to close panels)
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -191,40 +214,6 @@ const App = () => {
   useEffect(() => {
     if (selectedGuidelineInfo && guidelineInfoRef.current) {
       lastFocusedRef.current = document.activeElement as HTMLElement;
-      const focusableElements = guidelineInfoRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusableElements.length > 0) {
-        (focusableElements[0] as HTMLElement).focus();
-      }
-    }
-  }, [selectedGuidelineInfo]);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsPropPanelOpen(false);
-        setSelectedGuidelineInfo(null);
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
-
-  // Focus Traps
-  useEffect(() => {
-    if (isPropPanelOpen && propPanelRef.current) {
-      const focusableElements = propPanelRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusableElements.length > 0) {
-        (focusableElements[0] as HTMLElement).focus();
-      }
-    }
-  }, [isPropPanelOpen]);
-
-  useEffect(() => {
-    if (selectedGuidelineInfo && guidelineInfoRef.current) {
       const focusableElements = guidelineInfoRef.current.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
@@ -539,7 +528,9 @@ const App = () => {
           </div>
         </div>
         <div className={styles.headerActions}>
-          <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="새 진단" aria-label="새 진단 시작" className={styles.iconBtn}><PlusCircle size={16} /></button>
+          {selectedSessionId !== null && (
+            <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="새 진단" aria-label="새 진단 시작" className={styles.iconBtn}><PlusCircle size={16} /></button>
+          )}
           
           {sessionItems.length > 0 && (isPopup ? (
             <button 
@@ -581,8 +572,9 @@ const App = () => {
             </button>
           ))}
 
-          <button onClick={clearItems} title="전체 삭제" aria-label="모든 진단 기록 삭제" className={styles.iconBtn}><Trash2 size={16} /></button>
-          <button onClick={generateMarkdownReport} title="리포트 추출" aria-label="마크다운 리포트 추출" className={`${styles.iconBtn} ${copyStatus ? styles.success : ''}`}><FileText size={16} /></button>
+          {selectedSessionId !== null && (
+            <button onClick={generateMarkdownReport} title="리포트 추출" aria-label="마크다운 리포트 추출" className={`${styles.iconBtn} ${copyStatus ? styles.success : ''}`}><FileText size={16} /></button>
+          )}
         </div>
       </header>
 
@@ -630,7 +622,18 @@ const App = () => {
             </button>
             {sessions.length > 0 && (
               <div className={styles.historyOption}>
-                <p>과거 진단 기록 ({sessions.length}건)</p>
+                <div className={styles.historyHeader}>
+                  <p>과거 진단 기록 ({sessions.length}건)</p>
+                  <button 
+                    onClick={clearItems} 
+                    title="전체 삭제" 
+                    aria-label="모든 진단 기록 삭제" 
+                    className={styles.deleteAllBtn}
+                  >
+                    <Trash2 size={14} />
+                    전체 삭제
+                  </button>
+                </div>
                 <div className={styles.historyList}>
                   {sessions.map((s, idx) => (
                     <div 
@@ -875,6 +878,20 @@ const App = () => {
                           
                   {isExpanded && (
                     <div className={styles.groupContent} id={`group-content-${group.gid}`}>
+                      {group.gid === '1.1.1' && (
+                        <div className={styles.manualEntrySection}>
+                          <div className={styles.focusTrackerControls}>
+                            <button 
+                              className={`${styles.focusToggleBtn} ${isImageAltView ? styles.active : ''}`} 
+                              onClick={toggleImageAlt}
+                              title="이미지 대체 텍스트 오버레이 표시"
+                            >
+                              <ImageIcon size={14} />
+                              {isImageAltView ? "이미지 보기" : "대체텍스트 보기"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       {group.gid === '1.4.3' && (
                         <div className={styles.manualEntrySection}>
                           {!isContrastOpen ? (
@@ -928,6 +945,43 @@ const App = () => {
                               </div>
                             </div>
                           )}
+                        </div>
+                      )}
+                      {group.gid === '1.3.2' && (
+                        <div className={styles.manualEntrySection}>
+                          <div className={styles.focusTrackerControls}>
+                            <button 
+                              className={`${styles.focusToggleBtn} ${isLinearView ? styles.active : ''}`} 
+                              onClick={toggleCSS}
+                              title="CSS 비활성화를 통한 선형 구조 확인"
+                            >
+                              <LayoutList size={14} />
+                              {isLinearView ? "CSS 켜기" : "선형화(CSS 끄기)"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {group.gid === '2.1.2' && (
+                        <div className={styles.manualEntrySection}>
+                          <div className={styles.focusTrackerControls}>
+                            <button 
+                              className={`${styles.focusToggleBtn} ${isFocusTracking ? styles.active : ''}`} 
+                              onClick={toggleFocusTracking}
+                              title="초점 이동 경로 및 순서 시각화"
+                            >
+                              <MousePointer2 size={14} />
+                              {isFocusTracking ? "시각화 끄기" : "초점 순서 시각화"}
+                            </button>
+                            {isFocusTracking && (
+                              <button 
+                                className={styles.focusResetBtn} 
+                                onClick={resetFocusPath}
+                                title="표시된 경로 초기화"
+                              >
+                                <RotateCcw size={14} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                       {group.items.length === 0 ? (
@@ -1119,33 +1173,6 @@ const App = () => {
         </div>
       )}
 
-      {/* 하단 플로팅 전문가 도구바 (Expert Tools) */}
-      {selectedSessionId && !isAuditing && !isPopup && (
-        <div className={styles.expertToolbar}>
-          <div className={styles.toolbarInner}>
-            <div className={styles.toolGroup}>
-              <button 
-                onClick={toggleImageAlt} 
-                title={isImageAltView ? "이미지 보기 (Show Images)" : "대체텍스트 보기 (Show Alt Texts)"} 
-                aria-label={isImageAltView ? "이미지 보기" : "대체텍스트 보기"}
-                className={`${styles.toolBtn} ${isImageAltView ? styles.active : ''}`}
-              >
-                <ImageIcon size={14} />
-                <span>{isImageAltView ? "이미지 보기" : "대체텍스트 보기"}</span>
-              </button>
-              <button 
-                onClick={toggleCSS} 
-                title={isLinearView ? "CSS 켜기 (Restore Layout)" : "CSS 끄기 (Linearize Layout)"} 
-                aria-label={isLinearView ? "CSS 켜기 (Restore Layout)" : "CSS 끄기 (Linearize Layout)"}
-                className={`${styles.toolBtn} ${isLinearView ? styles.active : ''}`}
-              >
-                <LayoutList size={14} />
-                <span>{isLinearView ? "CSS 켜기" : "선형화(CSS 끄기)"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
