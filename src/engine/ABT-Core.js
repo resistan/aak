@@ -7,6 +7,10 @@ class ABTCore {
     this.processors = new Map();
     this.connector = window.ABTConnector;
     this.standards = null;
+    this.isFocusTracking = false;
+    this.focusPath = [];
+    this.currentFocusIdx = -1; // 현재 포커스된 요소의 인덱스 추적용
+    this.focusPath = [];
   }
 
   /**
@@ -338,7 +342,241 @@ class ABTCore {
       console.error("ABT: Failed to toggle linear view", e);
     }
   }
+  /**
+   * 초점 이동 경로 및 순서 시각화 기능을 토글합니다.
+   * 활성화 시 자동으로 페이지의 전체 초점 순서를 스캔하여 시각화합니다.
+   */
+  toggleFocusTracking(enable) {
+    this.isFocusTracking = !!enable;
+    
+    if (this.isFocusTracking) {
+      this.focusPath = [];
+      this._setupFocusListeners();
+      
+      // 실시간 위치 동기화를 위한 이벤트 등록
+      this._syncHandler = () => this._renderFocusPath();
+      window.addEventListener('scroll', this._syncHandler, { passive: true });
+      window.addEventListener('resize', this._syncHandler, { passive: true });
+
+      // 기능을 켜는 순간 전체 경로 자동 시각화 실행
+      this.visualizeFullFocusOrder();
+      
+      console.log("ABT: Focus Order Visualization Enabled");
+    } else {
+      this._removeFocusListeners();
+      if (this._syncHandler) {
+        window.removeEventListener('scroll', this._syncHandler);
+        window.removeEventListener('resize', this._syncHandler);
+      }
+      this._removeFocusOverlay();
+      console.log("ABT: Focus Order Visualization Disabled");
+    }
+  }
+
+  /**
+   * 페이지의 모든 초점 가능 요소를 찾아 전체 순서를 즉시 시각화합니다.
+   */
+  visualizeFullFocusOrder() {
+    if (!this.isFocusTracking) return;
+
+    const selector = 'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, [tabindex], [contenteditable], audio[controls], video[controls]';
+    const elements = Array.from(document.querySelectorAll(selector));
+
+    const focusable = elements.filter(el => {
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+      const tabIndex = el.getAttribute('tabindex');
+      if (tabIndex === '-1') return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+
+    const sorted = focusable.sort((a, b) => {
+      const aIdx = parseInt(a.getAttribute('tabindex')) || 0;
+      const bIdx = parseInt(b.getAttribute('tabindex')) || 0;
+      const aPos = aIdx > 0 ? aIdx : Infinity;
+      const bPos = bIdx > 0 ? bIdx : Infinity;
+      if (aPos !== bPos) return aPos - bPos;
+      return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+
+    this.focusPath = sorted.map(el => {
+      const rect = el.getBoundingClientRect();
+      return {
+        selector: window.ABTUtils.getSelector(el),
+        tagName: el.tagName,
+        timestamp: Date.now(),
+        absX: rect.left + rect.width / 2 + window.scrollX,
+        absY: rect.top + rect.height / 2 + window.scrollY,
+        absLeft: rect.left + window.scrollX,
+        absTop: rect.top + window.scrollY,
+        width: rect.width,
+        height: rect.height
+      };
+    });
+
+    this._renderFocusPath();
+    console.log(`ABT: Full focus order visualized (${this.focusPath.length} items)`);
+  }
+
+  resetFocusTracking() {
+    this.focusPath = [];
+    this._renderFocusPath();
+    console.log("ABT: Focus Path Reset");
+  }
+
+  _setupFocusListeners() {
+    this._focusHandler = (e) => {
+      if (!this.isFocusTracking) return;
+      const el = e.target;
+      if (!el || el === document || el === window) return;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+
+      const info = {
+        selector: window.ABTUtils.getSelector(el),
+        tagName: el.tagName,
+        timestamp: Date.now(),
+        absX: rect.left + rect.width / 2 + window.scrollX,
+        absY: rect.top + rect.height / 2 + window.scrollY,
+        absLeft: rect.left + window.scrollX,
+        absTop: rect.top + window.scrollY,
+        width: rect.width,
+        height: rect.height
+      };
+      // 중복 체크: 이미 경로에 포함된 요소인지 확인
+      const existingIdx = this.focusPath.findIndex(p => p.selector === info.selector);
+      
+      if (existingIdx !== -1) {
+        // 이미 있는 요소면 강조 박스 위치만 업데이트하고 종료
+        this.currentFocusIdx = existingIdx;
+        this._renderFocusPath();
+        return;
+      }
+
+      this.focusPath.push(info);
+      this.currentFocusIdx = this.focusPath.length - 1;
+      this._renderFocusPath();
+      console.log(`ABT: Focus tracked [#${this.focusPath.length}]`, info.selector);
+
+      const last = this.focusPath[this.focusPath.length - 1];
+      if (last && last.selector === info.selector) return;
+
+      this.focusPath.push(info);
+      this._renderFocusPath();
+    };
+    window.addEventListener('focusin', this._focusHandler, true);
+  }
+
+  _removeFocusListeners() {
+    if (this._focusHandler) {
+      window.removeEventListener('focusin', this._focusHandler, true);
+    }
+  }
+
+  _renderFocusPath() {
+    const containerId = 'abt-focus-tracker-overlay';
+    let container = document.getElementById(containerId);
+    
+    if (!container) {
+      if (!this.isFocusTracking) return;
+      container = document.createElement('div');
+      container.id = containerId;
+      Object.assign(container.style, {
+        position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
+        pointerEvents: 'none', zIndex: '2147483647', overflow: 'visible'
+      });
+      document.body.appendChild(container);
+    }
+
+    if (!this.isFocusTracking || this.focusPath.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    let svg = container.querySelector('svg');
+    if (!svg) {
+      svg = document.createElementNS(svgNS, 'svg');
+      Object.assign(svg.style, { width: '100%', height: '100%', overflow: 'visible' });
+      container.appendChild(svg);
+    } else {
+      svg.innerHTML = '';
+    }
+
+    const toVR = (pt) => ({
+      x: pt.absX - window.scrollX,
+      y: pt.absY - window.scrollY,
+      left: pt.absLeft - window.scrollX,
+      top: pt.absTop - window.scrollY
+    });
+
+    if (this.focusPath.length > 1) {
+      const path = document.createElementNS(svgNS, 'path');
+      const start = toVR(this.focusPath[0]);
+      let d = `M ${start.x} ${start.y}`;
+      for (let i = 1; i < this.focusPath.length; i++) {
+        const next = toVR(this.focusPath[i]);
+        d += ` L ${next.x} ${next.y}`;
+      }
+      Object.assign(path.style, {
+        fill: 'none', stroke: '#3b82f6', strokeWidth: '3', 
+        strokeDasharray: '8,4', opacity: '0.6'
+      });
+      path.setAttribute('d', d);
+      svg.appendChild(path);
+    }
+
+    this.focusPath.forEach((pt, idx) => {
+      const coords = toVR(pt);
+      const isCurrent = idx === this.currentFocusIdx;
+      const g = document.createElementNS(svgNS, 'g');
+
+      const circle = document.createElementNS(svgNS, 'circle');
+      circle.setAttribute('cx', coords.x);
+      circle.setAttribute('cy', coords.y);
+      circle.setAttribute('r', isCurrent ? '14' : '12');
+      circle.setAttribute('fill', isCurrent ? '#ef4444' : '#3b82f6');
+      circle.setAttribute('stroke', 'white');
+      circle.setAttribute('stroke-width', '2');
+      circle.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
+      g.appendChild(circle);
+
+      const text = document.createElementNS(svgNS, 'text');
+      text.setAttribute('x', coords.x);
+      text.setAttribute('y', coords.y + 4);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', 'white');
+      text.style.fontSize = '10px';
+      text.style.fontWeight = '900';
+      text.textContent = idx + 1;
+      g.appendChild(text);
+
+      if (isCurrent) {
+        const rect = document.createElementNS(svgNS, 'rect');
+        rect.setAttribute('x', coords.left - 4);
+        rect.setAttribute('y', coords.top - 4);
+        rect.setAttribute('width', pt.width + 8);
+        rect.setAttribute('height', pt.height + 8);
+        rect.setAttribute('fill', 'rgba(239, 68, 68, 0.15)');
+        rect.setAttribute('stroke', '#ef4444');
+        rect.setAttribute('stroke-width', '2');
+        rect.setAttribute('stroke-dasharray', '4,2');
+        rect.setAttribute('rx', '4');
+        g.appendChild(rect);
+      }
+      svg.appendChild(g);
+    });
+  }
+
+  _removeFocusOverlay() {
+    const container = document.getElementById('abt-focus-tracker-overlay');
+    if (container) container.remove();
+  }
 }
+
+
 
 // Global Singleton
 window.ABTCore = new ABTCore();
