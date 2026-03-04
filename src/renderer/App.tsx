@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Shield, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered, Home } from 'lucide-react';
+import { ActivitySquare, Scan, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered, Home } from 'lucide-react';
 import styles from './styles/App.module.scss';
 import { useStore, kwcagHierarchy, ABTItem } from './store/useStore';
 import rawStandards from '../engine/kwcag-standards.json';
@@ -521,9 +521,9 @@ const App = () => {
     <div className={`${styles.container} ${isPopup ? styles.isPopup : ''}`}>
       <header className={styles.extHeader}>
         <div className={styles.brand}>
-          <Shield size={18} className={styles.logo} />
+          <ActivitySquare size={18} className={styles.logo} />
           <div className={styles.titleInfo}>
-            <h1>AAK Workbench</h1>
+            <h1>A11Y Assistant</h1>
             <span>{isPopup ? 'Window' : 'Extension'}</span>
           </div>
         </div>
@@ -603,7 +603,7 @@ const App = () => {
       ) : !selectedSessionId ? (
         <div className={styles.dashboard}>
           <div className={styles.hero}>
-            <div className={styles.heroIcon}><Shield size={48} /></div>
+            <div className={styles.heroIcon}><Scan size={48} /></div>
             <h2>Ready to Audit</h2>
             <p>현재 페이지의 접근성을 진단합니다.</p>
             {currentTabInfo && (
@@ -674,10 +674,6 @@ const App = () => {
                 </div>
               </div>
             )}
-          </div>
-          <div className={styles.features}>
-            <div className={styles.featItem}><CheckCircle2 size={14} /> KWCAG 2.2 지침</div>
-            <div className={styles.featItem}><CheckCircle2 size={14} /> 실시간 판정</div>
           </div>
         </div>
       ) : (

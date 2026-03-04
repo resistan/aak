@@ -4,7 +4,7 @@
   "description": "A11Y Assistant for KWCAG",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp src/extension/manifest.json dist/"
+    "build": "vite build && cp src/extension/manifest.json dist/ && cp -r src/extension/icons dist/"
   },
   "dependencies": {
     "lucide-react": "^0.284.0",

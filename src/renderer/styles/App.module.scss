@@ -276,12 +276,9 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding-bottom: 5rem; 
+  padding-bottom: $space-4;
   min-height: 0;
 
-  .isPopup & {
-    padding-bottom: $space-4;
-  }
 
   .statsSummary {
     display: flex;
