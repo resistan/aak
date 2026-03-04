@@ -1,4 +1,4 @@
-# ABT-2.1.2-Processor: 초점 이동과 표시 v0.11
+# ABT-2.1.2-Processor: 초점 이동과 표시 v0.12
 
 ### 🔗 References
 - KWCAG 2.2: 2.1.2 초점 이동과 표시
@@ -6,29 +6,29 @@
 
 ---
 
-이 알고리즘은 **KWCAG 2.1.2(초점 이동과 표시)** 지침을 준수하며, 초점 이동의 논리성(`tabindex`)과 시각적 명확성(`outline` 가시성 및 명도 대비)을 집중적으로 진단한다. 건너뛰기 링크 관련 검사는 본 지침에서 제외된다.
+이 알고리즘은 **KWCAG 2.1.2(초점 이동과 표시)** 지침을 준수하며, 초점 이동의 논리성(`tabindex`)과 시각적 명확성(`outline` 가시성)을 진단한다.
 
 ## 1. 데이터 수집 단계 (Data Collection)
-- **Focusable Elements:** 모든 대화형 요소 (`a`, `button`, `input` 등) 및 `tabindex`가 적용된 요소.
-- **Visual Styles:** 요소의 `outline-style`, `outline-width`, `outline-color` 및 배경색 대비비.
+- **Focusable Elements:** `a[href]`, `button`, `input`, `select`, `textarea`, `[tabindex]:not([tabindex="-1"])`, `details`, `summary`.
+- **Styles:** 인라인 `style` 속성 내의 `outline` 정의.
+- **Geometry:** `getBoundingClientRect()`를 통한 요소의 시각적 위치.
 
 ## 2. 분석 및 분류 로직 (Analysis Pipeline)
 
 ### [단계 A] 초점 이동 순서 (Focus Order)
-- **Rule 1.1 (양수 Tabindex):** `tabindex="1"` 등 양수값이 설정되어 문서의 자연스러운 초점 이동 순서를 강제로 변경하는가?
-  - 결과: **[수정 권고]** (DOM 구조 조정을 통한 순서 보장 권장)
+- **Rule 1.1 (양수 Tabindex):** `tabindex > 0`인 요소 탐지.
+  - **예외 처리 (Heuristics):**
+    - 시각적으로 페이지 상단 15% 이내에 위치한 경우.
+    - DOM 구조상 부모의 첫 5번째 이내 자식으로 최상위 그룹에 속하는 경우.
+  - **결과:** 예외에 해당하지 않는 양수 `tabindex` 발견 시 **[수정 권고]**.
 
-### [단계 B] 초점 표시 가시성 (Focus Visible) - 수동 검사 유도
-- **정적 진단의 한계**: `window.getComputedStyle()` API는 요소가 현재 초점을 받고 있지 않으면 `:focus` 가상 클래스의 스타일을 반환하지 않습니다. 즉, 스크립트가 실행되는 순간에는 99%의 요소가 초점이 없는 상태이므로 기계적으로 `outline`의 존재 여부를 알 수 없습니다.
-- **Rule 2.1 (인라인 아웃라인 제거):** 요소 자체에 `style="outline: none"`이 하드코딩된 최악의 안티 패턴만 기계적으로 잡아냅니다.
-  - 결과: 감지 시 **[오류]**.
-- **Rule 2.2 (수동 검사 안내):** 페이지 전체의 초점 이동과 표시는 무조건 사람이 `Tab` 키를 눌러보며 눈으로 확인해야 합니다.
-  - 결과: 항상 **[검토 필요]** 리포트를 1건 발행하여 수동 검사를 강하게 유도합니다.
+### [단계 B] 초점 표시 가시성 (Focus Visible)
+- **Rule 2.1 (인라인 아웃라인 제거):** 요소에 `style="outline: none"` 또는 `style="outline: 0"`이 직접 적용된 경우.
+  - 결과: **[오류]**.
+- **Rule 2.2 (수동 검사 안내):** `getComputedStyle`의 한계로 인해 페이지 전체의 초점 가시성은 수동 검토를 유도함.
+  - 결과: 항상 **[검토 필요]** 리포트를 1건 발행.
 
 ## 3. 최종 상태 정의 (Final Status)
-1. **오류 (Fail):**
-   - `style="outline:none"` 등 인라인 스타일로 초점 표시가 강제로 제거된 명백한 안티 패턴.
-2. **검토 필요 (Needs Review):**
-   - 진단자가 직접 Tab 키를 눌러가며 논리적 순서와 시각적 초점 표시(명도 대비 포함)를 확인하라는 안내.
-3. **수정 권고 (Suggestion):**
-   - 양수 `tabindex`가 사용되어 초점 이동 순서가 꼬일 위험이 있는 경우.
+1. **오류:** 인라인 스타일로 초점 표시가 강제로 제거된 경우.
+2. **검토 필요:** 전문가가 직접 Tab 키를 눌러 시각적 초점 표시를 확인해야 하는 상태.
+3. **수정 권고:** 논리적 초점 이동 순서를 방해하는 양수 `tabindex`가 사용된 경우.
