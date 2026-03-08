@@ -2,6 +2,11 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ActivitySquare, Scan, Info, Search, Edit3, Clock, ChevronRight, ChevronDown, ChevronLeft, Filter, FileText, CheckCircle2, AlertCircle, Trash2, Folder, FolderOpen, FileCode2, RotateCcw, X, Image as ImageIcon, PlusCircle, ExternalLink, PanelRightClose, LayoutList, Pipette, MousePointer2, ListOrdered, Home, Plus } from 'lucide-react';
 import styles from './styles/App.module.scss';
 import { useStore, kwcagHierarchy, ABTItem } from './store/useStore';
+import { useToolsState } from './hooks/useToolsState';
+import { useSessionManager } from './hooks/useSessionManager';
+import { useAudit } from './hooks/useAudit';
+import { useContrastPicker } from './hooks/useContrastPicker';
+import { useModalState } from './hooks/useModalState';
 import rawStandards from '../engine/kwcag-standards.json';
 import { getContrastRatio } from './utils/color';
 
@@ -43,105 +48,106 @@ const formatRelativeTime = (timestamp: string) => {
 
 const App = () => {
   const { items, setItems, addReport, addReportsBatch, updateItemStatus, setGuidelineScore, removeSession, removeSessionById, clearItems, projectName } = useStore();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [judgingId, setJudgingId] = useState<string | null>(null);
-  const [tempComment, setTempComment] = useState("");
   const [manualComment, setManualComment] = useState("");
-  const [selectedJudgeStatus, setSelectedJudgeStatus] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [activeTab, setActiveTab] = useState("ALL");
   const [copyStatus, setCopyStatus] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
-  const [isPropPanelOpen, setIsPropPanelOpen] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
-  const [currentTabInfo, setCurrentTabInfo] = useState<{url: string, title: string} | null>(null);
   const [isManualDashboard, setIsManualDashboard] = useState(false);
-  const [lastTriggeredScanTime, setLastTriggeredScanTime] = useState<number>(0);
-  const [isAuditing, setIsAuditing] = useState(false);
-  const [currentGuideline, setCurrentGuideline] = useState<string | null>(null);
-  const [selectedGuidelineInfo, setSelectedGuidelineInfo] = useState<string | null>(null);
-  const [isLinearView, setIsLinearView] = useState(false);
-  const [isImageAltView, setIsImageAltView] = useState(false);
-  const [isContrastOpen, setIsContrastOpen] = useState(false);
-  const [isFocusTracking, setIsFocusTracking] = useState(false);
-  const [fgColor, setFgColor] = useState("#ffffff");
-  const [bgColor, setBgColor] = useState("#000000");
-  const [manualContrastName, setManualContrastName] = useState("");
-  const [manualEntryGid, setManualEntryGid] = useState<string | null>(null);
 
-  const propPanelRef = useRef<HTMLDivElement>(null);
-  const guidelineInfoRef = useRef<HTMLDivElement>(null);
-  const lastFocusedRef = useRef<HTMLElement | null>(null);
-  const collapsedByUser = useRef<Set<string>>(new Set());
   const isPopup = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'popup', []);
   const sourceWindowId = useMemo(() => {
     const id = new URLSearchParams(window.location.search).get('windowId');
     return id ? parseInt(id) : null;
   }, []);
 
-  const toggleCSS = () => {
-    const nextState = !isLinearView;
-    setIsLinearView(nextState);
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'TOGGLE_CSS',
-        enable: nextState,
-        windowId: isPopup ? sourceWindowId : null
-      });
-    }
-  };
+  const {
+		isLinearView,
+		isImageAltView,
+		isFocusTracking,
+		toggleCSS,
+		toggleImageAlt,
+		toggleFocusTracking,
+		resetFocusPath
+	} = useToolsState(isPopup, sourceWindowId);
 
-  const toggleImageAlt = () => {
-    const nextState = !isImageAltView;
-    setIsImageAltView(nextState);
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'TOGGLE_IMAGE_ALT',
-        enable: nextState,
-        windowId: isPopup ? sourceWindowId : null
-      });
-    }
-  };
-  const pickColor = async (type: 'fg' | 'bg') => {
-    if (!window.EyeDropper) {
-      alert("현재 브라우저에서 EyeDropper API를 지원하지 않습니다.");
-      return;
-    }
-    try {
-      const dropper = new window.EyeDropper();
-      const result = await dropper.open();
-      if (type === 'fg') setFgColor(result.sRGBHex);
-      else setBgColor(result.sRGBHex);
-    } catch (e) {
-      console.log("EyeDropper canceled or failed");
-    }
-  };
-  const handleAddManualContrast = () => {
-    if (!selectedSessionId) return;
-    const session = sessions.find(s => s.scanId === selectedSessionId);
-    if (!session) return;
+  const {
+    selectedSessionId,
+    setSelectedSessionId,
+    activeTab,
+    setActiveTab,
+    statusFilter,
+    setStatusFilter,
+    expandedGroups,
+    setExpandedGroups,
+    manualEntryGid,
+    setManualEntryGid,
+    sessions,
+    baseFilteredItems,
+    filteredItems,
+    itemStats,
+    allGroupedItems,
+    toggleGroup,
+    collapsedByUser
+  } = useSessionManager(items);
 
-    const ratio = getContrastRatio(fgColor, bgColor);
-    const status = ratio >= 4.5 ? "적절" : "수정 권고";
-    const message = `[수동 추가] '${manualContrastName || '명도 대비 케이스'}'의 대비는 ${ratio}:1 입니다.`;
+  const {
+    isConnected,
+    currentTabInfo,
+    lastTriggeredScanTime,
+    isAuditing,
+    currentGuideline,
+    handleStartAudit
+  } = useAudit(
+    addReport,
+    addReportsBatch,
+    setSelectedSessionId,
+    setIsManualDashboard,
+    sessions,
+    selectedSessionId,
+    isManualDashboard,
+    isPopup,
+    sourceWindowId
+  );
 
-    const manualReport = {
-      guideline_id: "1.4.3",
-      elementInfo: { tagName: "MANUAL", selector: "manual-contrast" },
-      context: {
-        smartContext: manualContrastName || "수동 측정 항목",
-        color: fgColor,
-        backgroundColor: bgColor
-      },
-      result: { status, message, rules: ["Manual Contrast Check"] },
-      pageInfo: { ...session }
+  // Sync state between windows
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.storage) return;
+    const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName === 'local' && changes['abt-storage']) {
+        (useStore.persist as any).rehydrate();
+      }
     };
+    chrome.storage.onChanged.addListener(storageListener);
+    return () => chrome.storage.onChanged.removeListener(storageListener);
+  }, []);
 
-    addReport(manualReport);
-    setManualContrastName("");
-    setIsContrastOpen(false);
-  };
+  const {
+    isContrastOpen,
+    setIsContrastOpen,
+    fgColor,
+    bgColor,
+    manualContrastName,
+    setManualContrastName,
+    pickColor,
+    handleAddManualContrast,
+    resetForm
+  } = useContrastPicker(selectedSessionId, sessions, addReport);
+
+  const {
+    selectedId,
+    setSelectedId,
+    judgingId,
+    setJudgingId,
+    tempComment,
+    setTempComment,
+    selectedJudgeStatus,
+    setSelectedJudgeStatus,
+    isPropPanelOpen,
+    setIsPropPanelOpen,
+    selectedGuidelineInfo,
+    setSelectedGuidelineInfo,
+    propPanelRef,
+    guidelineInfoRef
+  } = useModalState(isContrastOpen, setIsContrastOpen);
+
   const deleteManualItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (window.confirm("이 수동 추가 항목을 삭제하시겠습니까?")) {
@@ -158,203 +164,6 @@ const App = () => {
     }
   };
 
-  const toggleFocusTracking = () => {
-    const nextState = !isFocusTracking;
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'TOGGLE_FOCUS_TRACKING',
-        enable: nextState,
-        windowId: isPopup ? sourceWindowId : null
-      }, (res) => {
-        if (res?.status === 'success') setIsFocusTracking(nextState);
-      });
-    }
-  };
-
-  const resetFocusPath = () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'RESET_FOCUS_TRACKING',
-        windowId: isPopup ? sourceWindowId : null
-      });
-    }
-  };
-
-  // Global Keyboard Handlers (ESC to close panels)
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsPropPanelOpen(false);
-        setSelectedGuidelineInfo(null);
-        setIsContrastOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
-
-  // Focus Restore logic
-  useEffect(() => {
-    if (!isPropPanelOpen && !selectedGuidelineInfo && lastFocusedRef.current) {
-      lastFocusedRef.current.focus();
-      lastFocusedRef.current = null;
-    }
-  }, [isPropPanelOpen, selectedGuidelineInfo]);
-
-  // Focus Traps
-  useEffect(() => {
-    if (isPropPanelOpen && propPanelRef.current) {
-      lastFocusedRef.current = document.activeElement as HTMLElement;
-      const focusableElements = propPanelRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusableElements.length > 0) {
-        (focusableElements[0] as HTMLElement).focus();
-      }
-    }
-  }, [isPropPanelOpen]);
-
-  useEffect(() => {
-    if (selectedGuidelineInfo && guidelineInfoRef.current) {
-      lastFocusedRef.current = document.activeElement as HTMLElement;
-      const focusableElements = guidelineInfoRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusableElements.length > 0) {
-        (focusableElements[0] as HTMLElement).focus();
-      }
-    }
-  }, [selectedGuidelineInfo]);
-
-  // Sync state between windows
-  useEffect(() => {
-    if (typeof chrome === 'undefined' || !chrome.storage) return;
-    const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-      if (areaName === 'local' && changes['abt-storage']) {
-        (useStore.persist as any).rehydrate();
-      }
-    };
-    chrome.storage.onChanged.addListener(storageListener);
-    return () => chrome.storage.onChanged.removeListener(storageListener);
-  }, []);
-
-  // Track active tab
-  useEffect(() => {
-    const updateCurrentTab = () => {
-      if (typeof chrome !== 'undefined' && chrome.tabs) {
-        const queryOptions = (isPopup && sourceWindowId)
-          ? { active: true, windowId: sourceWindowId }
-          : { active: true, lastFocusedWindow: true };
-
-        chrome.tabs.query(queryOptions, (tabs) => {
-          const validTab = tabs.find(t => t.url && !t.url.startsWith('chrome-extension://')) || tabs[0];
-          if (validTab) {
-            setCurrentTabInfo({
-              url: validTab.url || "",
-              title: validTab.title || ""
-            });
-          }
-        });
-      }
-    };
-
-    updateCurrentTab();
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      const tabListener = (tabId: number, changeInfo: any, tab: chrome.tabs.Tab) => {
-        if (changeInfo.status === 'complete' && tab.active) updateCurrentTab();
-      };
-      const activeListener = () => updateCurrentTab();
-      chrome.tabs.onUpdated.addListener(tabListener);
-      chrome.tabs.onActivated.addListener(activeListener);
-      return () => {
-        chrome.tabs.onUpdated.removeListener(tabListener);
-        chrome.tabs.onActivated.removeListener(activeListener);
-      };
-    }
-  }, [isPopup, sourceWindowId]);
-
-  const handleStartAudit = () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      setIsAuditing(true);
-      setLastTriggeredScanTime(Date.now());
-
-      if (chrome.tabs) {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, { type: 'RUN_AUDIT' }, (response) => {
-              if (chrome.runtime.lastError) {
-                chrome.scripting.executeScript({
-                  target: { tabId: tabs[0].id },
-                  files: ['engine/abt-engine.js']
-                }).then(() => {
-                  setTimeout(() => chrome.tabs.sendMessage(tabs[0].id, { type: 'RUN_AUDIT' }), 200);
-                });
-              }
-            });
-          }
-        });
-      } else {
-        chrome.runtime.sendMessage({ type: 'RUN_AUDIT', windowId: isPopup ? sourceWindowId : null });
-      }
-      setTimeout(() => setIsAuditing(false), 10000);
-    }
-  };
-
-  const sessions = useMemo(() => {
-    const map = new Map<number, any>();
-
-    items.forEach(item => {
-      const pInfo = item.pageInfo;
-      if(!pInfo || !pInfo.scanId) return;
-
-      if(!map.has(pInfo.scanId)) {
-        map.set(pInfo.scanId, {
-          ...pInfo,
-          pageTitle: pInfo.pageTitle || "제목없는 페이지"
-        })
-      }
-    });
-
-    return Array.from(map.values()).sort((a,b) => b.scanId - a.scanId);
-  }, [items]);
-
-  useEffect(() => {
-    if (!currentTabInfo?.url) return;
-    const latestSessionForUrl = sessions.find(s => normalizeUrl(s.url) === normalizeUrl(currentTabInfo.url));
-    if (latestSessionForUrl) {
-      const sessionTime = new Date(latestSessionForUrl.timestamp).getTime();
-      if (!selectedSessionId && !isManualDashboard && lastTriggeredScanTime === 0) {
-        setSelectedSessionId(latestSessionForUrl.scanId);
-      } else if (lastTriggeredScanTime > 0 && sessionTime > lastTriggeredScanTime - 1000) {
-        setSelectedSessionId(latestSessionForUrl.scanId);
-        setIsManualDashboard(false);
-        setLastTriggeredScanTime(0);
-        setIsAuditing(false);
-      }
-    }
-  }, [currentTabInfo?.url, sessions, selectedSessionId, isManualDashboard, lastTriggeredScanTime]);
-
-  useEffect(() => {
-    if (items.length === 0) {
-      setSelectedSessionId(null);
-      setIsManualDashboard(false);
-    } else if (selectedSessionId && !items.some(i => i.pageInfo?.scanId === selectedSessionId)) {
-      setSelectedSessionId(null);
-    }
-  }, [items, selectedSessionId]);
-
-  const toggleGroup = (gid: string) => {
-    setExpandedGroups(prev => {
-      if (prev.includes(gid)) {
-        collapsedByUser.current.add(gid);
-        return prev.filter(id => id !== gid);
-      } else {
-        collapsedByUser.current.delete(gid);
-        return [...prev, gid];
-      }
-    });
-  };
-
   const getGuidelineName = (id: string) => {
     for (const group of kwcagHierarchy) {
       const found = group.items.find(item => item.id === id);
@@ -362,115 +171,6 @@ const App = () => {
     }
     return id;
   };
-
-  useEffect(() => {
-    if (typeof chrome === 'undefined' || !chrome.runtime) return;
-    const handleMessage = (message: any) => {
-      if (message.type === 'UPDATE_ABT_LIST_BATCH' || message.type === 'UPDATE_ABT_BATCH') {
-        setIsConnected(true);
-        addReportsBatch(message.items || message.data);
-      } else if (message.type === 'UPDATE_ABT_LIST') {
-        setIsConnected(true);
-        addReport(message.data);
-      } else if (message.type === 'SCAN_PROGRESS') {
-        setCurrentGuideline(message.guideline_id);
-        setIsAuditing(true);
-      } else if (message.type === 'SCAN_FINISHED') {
-        setIsAuditing(false);
-        setSelectedSessionId(message.scanId);
-        setIsManualDashboard(false);
-      }
-    };
-
-    const port = chrome.runtime.connect({ name: 'abt-sidepanel' });
-    port.onMessage.addListener(handleMessage);
-    const runtimeListener = (message: any) => handleMessage(message);
-    chrome.runtime.onMessage.addListener(runtimeListener);
-
-    return () => {
-      port.onMessage.removeListener(handleMessage);
-      port.disconnect();
-      chrome.runtime.onMessage.removeListener(runtimeListener);
-    };
-  }, [addReport, addReportsBatch]);
-
-  // 통계 계산
-  const baseFilteredItems = useMemo(() => {
-    return items.filter(item => {
-      if(selectedSessionId && item.pageInfo?.scanId !== selectedSessionId) return false;
-      if(activeTab !== "ALL" && item.guideline_id !== activeTab) return false;
-      return true;
-    })
-  }, [items, selectedSessionId, activeTab]);
-
-  // 상태 필터
-  const filteredItems = useMemo(() => {
-    if (statusFilter === "ALL") return baseFilteredItems;
-    return baseFilteredItems.filter(item => item.currentStatus === statusFilter);
-  }, [items, statusFilter]);
-
-  const itemStats = useMemo(() => {
-    const stats = {
-      total: baseFilteredItems.length,
-      error: 0,
-      review: 0,
-      pass: 0,
-      inappropriate: 0,
-      recommendation: 0
-    }
-
-    // 한번만 순회하고 카운트
-    baseFilteredItems.forEach(item => {
-      const status = item.currentStatus;
-      if(status === '오류') stats.error++;
-      else if(status === '검토 필요') stats.review++;
-      else if(status === '적절') stats.pass++;
-      else if(status === '부적절') stats.inappropriate++;
-      else if(status === '수정 권고') stats.recommendation++;
-    });
-
-    return stats;
-  }, [baseFilteredItems]);
-
-  const allGroupedItems = useMemo(() => {
-    const itemMap: Record<string, ABTItem[]> = {};
-    filteredItems.forEach(item => {
-      if (!itemMap[item.guideline_id]) itemMap[item.guideline_id] = [];
-      itemMap[item.guideline_id].push(item);
-    });
-
-    const result: {gid: string, label: string, items: ABTItem[]}[] = [];
-    kwcagHierarchy.forEach(principle => {
-      principle.items.forEach(item => {
-        const itemsInGroup = itemMap[item.id] || [];
-
-        // [정렬 로직] MANUAL 항목 우선 배치 + 최신순 정렬
-        const sortedItems = [...itemsInGroup].sort((a, b) => {
-          const aManual = a.elementInfo?.tagName === 'MANUAL';
-          const bManual = b.elementInfo?.tagName === 'MANUAL';
-          if (aManual && !bManual) return -1;
-          if (!aManual && bManual) return 1;
-          // 시간순 (최신 항목 상단)
-          const aTime = new Date(a.pageInfo?.timestamp || 0).getTime();
-          const bTime = new Date(b.pageInfo?.timestamp || 0).getTime();
-          return bTime - aTime;
-        });
-
-        result.push({ gid: item.id, label: item.label, items: sortedItems });
-      });
-    });
-    return result;
-  }, [filteredItems]);
-
-  useEffect(() => {
-    const errorGids = allGroupedItems.filter(g => g.items.some(i => i.currentStatus === '오류')).map(g => g.gid);
-    if (errorGids.length > 0) {
-      setExpandedGroups(prev => {
-        const newGids = errorGids.filter(gid => !collapsedByUser.current.has(gid));
-        return [...new Set([...prev, ...newGids])];
-      });
-    }
-  }, [allGroupedItems]);
 
   const handleSaveComment = (id: string) => {
     const item = items.find(i => i.id === id);
