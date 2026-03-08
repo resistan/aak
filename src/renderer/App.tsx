@@ -28,16 +28,16 @@ const formatRelativeTime = (timestamp: string) => {
 
   if (diffInMins < 1) return '방금 전';
   if (diffInMins < 60) return `${diffInMins}분 전`;
-  
+
   const isToday = date.toDateString() === now.toDateString();
   const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  
+
   if (isToday) return `오늘 ${timeStr}`;
-  
+
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) return `어제 ${timeStr}`;
-  
+
   return date.toLocaleDateString() + ' ' + timeStr;
 };
 
@@ -84,8 +84,8 @@ const App = () => {
     const nextState = !isLinearView;
     setIsLinearView(nextState);
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({ 
-        type: 'TOGGLE_CSS', 
+      chrome.runtime.sendMessage({
+        type: 'TOGGLE_CSS',
         enable: nextState,
         windowId: isPopup ? sourceWindowId : null
       });
@@ -96,8 +96,8 @@ const App = () => {
     const nextState = !isImageAltView;
     setIsImageAltView(nextState);
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({ 
-        type: 'TOGGLE_IMAGE_ALT', 
+      chrome.runtime.sendMessage({
+        type: 'TOGGLE_IMAGE_ALT',
         enable: nextState,
         windowId: isPopup ? sourceWindowId : null
       });
@@ -129,10 +129,10 @@ const App = () => {
     const manualReport = {
       guideline_id: "1.4.3",
       elementInfo: { tagName: "MANUAL", selector: "manual-contrast" },
-      context: { 
-        smartContext: manualContrastName || "수동 측정 항목", 
-        color: fgColor, 
-        backgroundColor: bgColor 
+      context: {
+        smartContext: manualContrastName || "수동 측정 항목",
+        color: fgColor,
+        backgroundColor: bgColor
       },
       result: { status, message, rules: ["Manual Contrast Check"] },
       pageInfo: { ...session }
@@ -161,8 +161,8 @@ const App = () => {
   const toggleFocusTracking = () => {
     const nextState = !isFocusTracking;
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({ 
-        type: 'TOGGLE_FOCUS_TRACKING', 
+      chrome.runtime.sendMessage({
+        type: 'TOGGLE_FOCUS_TRACKING',
         enable: nextState,
         windowId: isPopup ? sourceWindowId : null
       }, (res) => {
@@ -173,7 +173,7 @@ const App = () => {
 
   const resetFocusPath = () => {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({ 
+      chrome.runtime.sendMessage({
         type: 'RESET_FOCUS_TRACKING',
         windowId: isPopup ? sourceWindowId : null
       });
@@ -242,8 +242,8 @@ const App = () => {
   useEffect(() => {
     const updateCurrentTab = () => {
       if (typeof chrome !== 'undefined' && chrome.tabs) {
-        const queryOptions = (isPopup && sourceWindowId) 
-          ? { active: true, windowId: sourceWindowId } 
+        const queryOptions = (isPopup && sourceWindowId)
+          ? { active: true, windowId: sourceWindowId }
           : { active: true, lastFocusedWindow: true };
 
         chrome.tabs.query(queryOptions, (tabs) => {
@@ -277,7 +277,7 @@ const App = () => {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       setIsAuditing(true);
       setLastTriggeredScanTime(Date.now());
-      
+
       if (chrome.tabs) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0] && tabs[0].id) {
@@ -302,19 +302,20 @@ const App = () => {
 
   const sessions = useMemo(() => {
     const map = new Map<number, any>();
-    const sortedItems = [...items].sort((a, b) => (b.pageInfo?.scanId || 0) - (a.pageInfo?.scanId || 0));
-    
-    sortedItems.forEach(item => {
+
+    items.forEach(item => {
       const pInfo = item.pageInfo;
-      if (!pInfo || !pInfo.scanId) return;
-      if (!map.has(pInfo.scanId)) {
+      if(!pInfo || !pInfo.scanId) return;
+
+      if(!map.has(pInfo.scanId)) {
         map.set(pInfo.scanId, {
           ...pInfo,
-          pageTitle: pInfo.pageTitle || "Untitled Page"
-        });
+          pageTitle: pInfo.pageTitle || "제목없는 페이지"
+        })
       }
     });
-    return Array.from(map.values()).sort((a, b) => b.scanId - a.scanId);
+
+    return Array.from(map.values()).sort((a,b) => b.scanId - a.scanId);
   }, [items]);
 
   useEffect(() => {
@@ -385,7 +386,7 @@ const App = () => {
     port.onMessage.addListener(handleMessage);
     const runtimeListener = (message: any) => handleMessage(message);
     chrome.runtime.onMessage.addListener(runtimeListener);
-    
+
     return () => {
       port.onMessage.removeListener(handleMessage);
       port.disconnect();
@@ -393,13 +394,43 @@ const App = () => {
     };
   }, [addReport, addReportsBatch]);
 
+  // 통계 계산
+  const baseFilteredItems = useMemo(() => {
+    return items.filter(item => {
+      if(selectedSessionId && item.pageInfo?.scanId !== selectedSessionId) return false;
+      if(activeTab !== "ALL" && item.guideline_id !== activeTab) return false;
+      return true;
+    })
+  }, [items, selectedSessionId, activeTab]);
+
+  // 상태 필터
   const filteredItems = useMemo(() => {
-    let result = items;
-    if (selectedSessionId) result = result.filter(i => i.pageInfo?.scanId === selectedSessionId);
-    if (activeTab !== "ALL") result = result.filter(i => i.guideline_id === activeTab);
-    if (statusFilter !== "ALL") result = result.filter(i => i.currentStatus === statusFilter);
-    return result;
-  }, [items, selectedSessionId, activeTab, statusFilter]);
+    if (statusFilter === "ALL") return baseFilteredItems;
+    return baseFilteredItems.filter(item => item.currentStatus === statusFilter);
+  }, [items, statusFilter]);
+
+  const itemStats = useMemo(() => {
+    const stats = {
+      total: baseFilteredItems.length,
+      error: 0,
+      review: 0,
+      pass: 0,
+      inappropriate: 0,
+      recommendation: 0
+    }
+
+    // 한번만 순회하고 카운트
+    baseFilteredItems.forEach(item => {
+      const status = item.currentStatus;
+      if(status === '오류') stats.error++;
+      else if(status === '검토 필요') stats.review++;
+      else if(status === '적절') stats.pass++;
+      else if(status === '부적절') stats.inappropriate++;
+      else if(status === '수정 권고') stats.recommendation++;
+    });
+
+    return stats;
+  }, [baseFilteredItems]);
 
   const allGroupedItems = useMemo(() => {
     const itemMap: Record<string, ABTItem[]> = {};
@@ -412,7 +443,7 @@ const App = () => {
     kwcagHierarchy.forEach(principle => {
       principle.items.forEach(item => {
         const itemsInGroup = itemMap[item.id] || [];
-        
+
         // [정렬 로직] MANUAL 항목 우선 배치 + 최신순 정렬
         const sortedItems = [...itemsInGroup].sort((a, b) => {
           const aManual = a.elementInfo?.tagName === 'MANUAL';
@@ -424,7 +455,7 @@ const App = () => {
           const bTime = new Date(b.pageInfo?.timestamp || 0).getTime();
           return bTime - aTime;
         });
-        
+
         result.push({ gid: item.id, label: item.label, items: sortedItems });
       });
     });
@@ -440,8 +471,6 @@ const App = () => {
       });
     }
   }, [allGroupedItems]);
-
-  const sessionItems = useMemo(() => items.filter(i => i.pageInfo?.scanId === selectedSessionId), [items, selectedSessionId]);
 
   const handleSaveComment = (id: string) => {
     const item = items.find(i => i.id === id);
@@ -486,15 +515,15 @@ const App = () => {
   const generateMarkdownReport = async () => {
     const date = new Date().toLocaleDateString();
     let md = `# 🛡️ AAK 접근성 진단 리포트 (${date})\n\n`;
-    const fails = sessionItems.filter(i => i.currentStatus === '오류').length;
-    const inapps = sessionItems.filter(i => i.currentStatus === '부적절').length;
-    const recs = sessionItems.filter(i => i.currentStatus === '수정 권고').length;
+    const fails = filteredItems.filter(i => i.currentStatus === '오류').length;
+    const inapps = filteredItems.filter(i => i.currentStatus === '부적절').length;
+    const recs = filteredItems.filter(i => i.currentStatus === '수정 권고').length;
     md += `## 📊 진단 요약\n- **❌ 오류:** ${fails}건\n- **🚫 부적절:** ${inapps}건\n- **⚠️ 수정 권고:** ${recs}건\n\n---\n\n`;
 
-    const activeGuidelines = Array.from(new Set(sessionItems.filter(i => i.currentStatus !== '적절').map(i => i.guideline_id)));
+    const activeGuidelines = Array.from(new Set(filteredItems.filter(i => i.currentStatus !== '적절').map(i => i.guideline_id)));
     activeGuidelines.forEach(gid => {
       md += `## 📘 ${getGuidelineName(gid)}\n\n`;
-      const gidItems = sessionItems.filter(i => i.guideline_id === gid && i.currentStatus !== '적절');
+      const gidItems = filteredItems.filter(i => i.guideline_id === gid && i.currentStatus !== '적절');
       gidItems.forEach(item => {
         const statusIcon = item.currentStatus === '오류' ? '❌' : item.currentStatus === '부적절' ? '🚫' : '⚠️';
         md += `### ${statusIcon} [${item.currentStatus}] ${item.elementInfo.selector}\n`;
@@ -505,7 +534,7 @@ const App = () => {
       });
     });
     md += `---\n*Generated by AAK Workbench (A11Y Browser Tester)*`;
-    
+
     if ('showSaveFilePicker' in window) {
       try {
         const handle = await (window as any).showSaveFilePicker({
@@ -531,8 +560,8 @@ const App = () => {
   };
 
   const handleLocate = (selector: string) => {
-    chrome.runtime.sendMessage({ 
-      type: 'locate-element', 
+    chrome.runtime.sendMessage({
+      type: 'locate-element',
       selector,
       windowId: isPopup ? sourceWindowId : null
     });
@@ -564,9 +593,9 @@ const App = () => {
               {selectedSessionId !== null && (
                 <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="홈으로 이동" aria-label="초기 화면으로 이동" className={styles.iconBtn}><Home size={16} /></button>
               )}
-              
-              {sessionItems.length > 0 && (isPopup ? (
-                <button 
+
+              {filteredItems.length > 0 && (isPopup ? (
+                <button
                   onClick={() => {
                     if (typeof chrome !== 'undefined' && chrome.sidePanel) {
                       const targetWinId = sourceWindowId || chrome.windows.WINDOW_ID_CURRENT;
@@ -574,15 +603,15 @@ const App = () => {
                         window.close();
                       });
                     }
-                  }} 
-                  title="사이드 패널로 돌리기" 
+                  }}
+                  title="사이드 패널로 돌리기"
                   aria-label="사이드 패널로 돌리기"
                   className={styles.iconBtn}
                 >
                   <PanelRightClose size={16} />
                 </button>
               ) : (
-                <button 
+                <button
                   onClick={() => {
                     if (typeof chrome !== 'undefined' && chrome.windows) {
                       chrome.windows.getCurrent((currentWin) => {
@@ -596,8 +625,8 @@ const App = () => {
                         if (winId) chrome.runtime.sendMessage({ type: 'POP_OUT', windowId: winId });
                       });
                     }
-                  }} 
-                  title="창 분리하기" 
+                  }}
+                  title="창 분리하기"
                   aria-label="창 분리하기"
                   className={styles.iconBtn}
                 >
@@ -647,8 +676,8 @@ const App = () => {
               <AlertCircle size={14} />
               <span>정확한 진단을 위해 페이지를 <strong>새로고침</strong>한 후 시작해 주세요.</span>
             </div>
-            <button 
-              className={styles.startBtn} 
+            <button
+              className={styles.startBtn}
               onClick={handleStartAudit}
               disabled={isAuditing}
               aria-label="진단 시작"
@@ -659,10 +688,10 @@ const App = () => {
               <div className={styles.historyOption}>
                 <div className={styles.historyHeader}>
                   <p>과거 진단 기록 ({sessions.length}건)</p>
-                  <button 
-                    onClick={clearItems} 
-                    title="전체 삭제" 
-                    aria-label="모든 진단 기록 삭제" 
+                  <button
+                    onClick={clearItems}
+                    title="전체 삭제"
+                    aria-label="모든 진단 기록 삭제"
                     className={styles.deleteAllBtn}
                   >
                     <Trash2 size={14} />
@@ -671,9 +700,9 @@ const App = () => {
                 </div>
                 <div className={styles.historyList}>
                   {sessions.map((s, idx) => (
-                    <div 
-                      key={s.scanId} 
-                      className={styles.historyItem} 
+                    <div
+                      key={s.scanId}
+                      className={styles.historyItem}
                       onClick={() => setSelectedSessionId(s.scanId)}
                       onKeyDown={(e) => handleKeyDown(e, () => setSelectedSessionId(s.scanId))}
                       tabIndex={0}
@@ -689,8 +718,8 @@ const App = () => {
                         <span className={styles.historyTitle}>{s.pageTitle}</span>
                       </div>
                       <div className={styles.historyActions}>
-                        <button 
-                          className={styles.deleteBtn} 
+                        <button
+                          className={styles.deleteBtn}
                           onClick={(e) => handleDeleteSession(e, s.scanId)}
                           onKeyDown={(e) => { e.stopPropagation(); handleKeyDown(e, () => handleDeleteSession(e, s.scanId)); }}
                           title="삭제"
@@ -711,8 +740,8 @@ const App = () => {
         <div className={styles.workArea}>
           <div className={styles.sessionSelector}>
             <Clock size={12} />
-            <select 
-              value={selectedSessionId || ""} 
+            <select
+              value={selectedSessionId || ""}
               onChange={(e) => setSelectedSessionId(Number(e.target.value))}
               aria-label="진단 세션 선택"
             >
@@ -725,40 +754,40 @@ const App = () => {
           </div>
 
           <div className={styles.statsSummary} role="tablist">
-            <button 
-              className={`${styles.statLine} ${statusFilter === 'ALL' ? styles.active : ''}`} 
+            <button
+              className={`${styles.statLine} ${statusFilter === 'ALL' ? styles.active : ''}`}
               onClick={() => setStatusFilter('ALL')}
               role="tab"
               aria-selected={statusFilter === 'ALL'}
             >
-              전체 <span>{sessionItems.length}</span>
+              전체 <span>{itemStats.total}</span>
             </button>
-            <button 
-              className={`${styles.statLine} ${styles.fail} ${statusFilter === '오류' ? styles.active : ''}`} 
+            <button
+              className={`${styles.statLine} ${styles.fail} ${statusFilter === '오류' ? styles.active : ''}`}
               onClick={() => setStatusFilter('오류')}
               role="tab"
               aria-selected={statusFilter === '오류'}
             >
-              오류 <span>{sessionItems.filter(i => i.currentStatus === '오류').length}</span>
+              오류 <span>{itemStats.error}</span>
             </button>
-            <button 
-              className={`${styles.statLine} ${styles.review} ${statusFilter === '검토 필요' ? styles.active : ''}`} 
+            <button
+              className={`${styles.statLine} ${styles.review} ${statusFilter === '검토 필요' ? styles.active : ''}`}
               onClick={() => setStatusFilter('검토 필요')}
               role="tab"
               aria-selected={statusFilter === '검토 필요'}
             >
-              검토 필요 <span>{sessionItems.filter(i => i.currentStatus === '검토 필요').length}</span>
+              검토 필요 <span>{itemStats.review}</span>
             </button>
-            <button 
-              className={`${styles.statLine} ${styles.pass} ${statusFilter === '적절' ? styles.active : ''}`} 
+            <button
+              className={`${styles.statLine} ${styles.pass} ${statusFilter === '적절' ? styles.active : ''}`}
               onClick={() => setStatusFilter('적절')}
               role="tab"
               aria-selected={statusFilter === '적절'}
             >
-              검토 완료 <span>{sessionItems.filter(i => i.currentStatus === '적절').length}</span>
+              검토 완료 <span>{itemStats.pass}</span>
             </button>
           </div>
-          
+
           <div className={styles.groupedList}>
             {allGroupedItems.map((group) => {
               const isExpanded = expandedGroups.includes(group.gid);
@@ -766,8 +795,8 @@ const App = () => {
 
               return (
                 <section key={group.gid} className={styles.groupSection}>
-                  <div 
-                    className={`${styles.groupHeader} ${hasError ? styles.hasError : ''}`} 
+                  <div
+                    className={`${styles.groupHeader} ${hasError ? styles.hasError : ''}`}
                     onClick={() => toggleGroup(group.gid)}
                     onKeyDown={(e) => handleKeyDown(e, () => toggleGroup(group.gid))}
                     role="button"
@@ -787,7 +816,7 @@ const App = () => {
 
                         if (manualScore !== undefined) {
                           return (
-                            <span 
+                            <span
                               className={`${styles.scoreBadge} ${manualScore < 60 ? styles.bad : manualScore < 90 ? styles.warning : styles.good}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -812,7 +841,7 @@ const App = () => {
                         }
 
                         if (total === 0) return (
-                          <span 
+                          <span
                             className={styles.naBadge}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -835,12 +864,12 @@ const App = () => {
                           else if (['오류', '부적절'].includes(i.currentStatus)) fail += weight;
                           else if (['검토 필요', '수정 권고'].includes(i.currentStatus)) review += weight;
                         });
-                        
+
                         // '수동 검사 필요' 문구로 점수를 가리는 로직 완화 (1.1.1, 3.1.1 등 핵심 지침은 점수를 우선 표시)
                         const skipManualBadgeGids = ['1.1.1', '3.1.1'];
                         if (fail === 0 && review > 0 && group.items.some(i => i.currentStatus === '검토 필요') && !skipManualBadgeGids.includes(group.gid)) {
                           return (
-                            <span 
+                            <span
                               className={`${styles.scoreBadge} ${styles.manual}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -875,7 +904,7 @@ const App = () => {
                         }
 
                         return (
-                          <span 
+                          <span
                             className={`${styles.scoreBadge} ${score < 60 ? styles.bad : score < 90 ? styles.warning : styles.good}`}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -898,16 +927,16 @@ const App = () => {
                           </span>
                         );
                       })()}
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (manualEntryGid === group.gid && isExpanded) {
                             setManualEntryGid(null);
                           } else {
                             setManualEntryGid(group.gid);
                             if (!isExpanded) toggleGroup(group.gid);
                           }
-                        }} 
+                        }}
                         className={`${styles.iconBtn} ${manualEntryGid === group.gid ? styles.active : ''}`}
                         title="검토 의견 수동 추가"
                         aria-label={`${group.gid} 검토 의견 수동 추가`}
@@ -915,8 +944,8 @@ const App = () => {
                       >
                         <Plus size={14} />
                       </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setSelectedGuidelineInfo(group.gid); }} 
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedGuidelineInfo(group.gid); }}
                         className={styles.iconBtn}
                         title="지침 판정 기준 보기"
                         aria-label={`${group.gid} 지침 판정 기준 보기`}
@@ -926,7 +955,7 @@ const App = () => {
                       </button>
                     </div>
                   </div>
-                          
+
                   {isExpanded && (
                     <div className={styles.groupContent} id={`group-content-${group.gid}`}>
                       {manualEntryGid === group.gid && (
@@ -951,8 +980,8 @@ const App = () => {
                       {group.gid === '1.1.1' && (
                         <div className={styles.manualEntrySection}>
                           <div className={styles.focusTrackerControls}>
-                            <button 
-                              className={`${styles.focusToggleBtn} ${isImageAltView ? styles.active : ''}`} 
+                            <button
+                              className={`${styles.focusToggleBtn} ${isImageAltView ? styles.active : ''}`}
                               onClick={toggleImageAlt}
                               title="이미지 대체 텍스트 오버레이 표시"
                             >
@@ -965,8 +994,8 @@ const App = () => {
                       {group.gid === '1.4.3' && (
                         <div className={styles.manualEntrySection}>
                           {!isContrastOpen ? (
-                            <button 
-                              className={styles.addCaseBtn} 
+                            <button
+                              className={styles.addCaseBtn}
                               onClick={() => setIsContrastOpen(true)}
                               title="수동 명도 대비 측정 항목 추가"
                             >
@@ -978,9 +1007,9 @@ const App = () => {
                                 <span>새 명도 대비 측정</span>
                                 <button onClick={() => { setIsContrastOpen(false); setManualContrastName(""); }} aria-label="닫기"><X size={14} /></button>
                               </div>
-                              <input 
-                                type="text" 
-                                placeholder="항목 이름 (예: 메인 배너 텍스트)" 
+                              <input
+                                type="text"
+                                placeholder="항목 이름 (예: 메인 배너 텍스트)"
                                 value={manualContrastName}
                                 onChange={e => setManualContrastName(e.target.value)}
                                 className={styles.manualInput}
@@ -988,9 +1017,9 @@ const App = () => {
                               <div className={styles.pickerRow}>
                                 <div className={styles.pickerBox}>
                                   <span>전경색</span>
-                                  <button 
-                                    className={styles.colorBtn} 
-                                    style={{ backgroundColor: fgColor }} 
+                                  <button
+                                    className={styles.colorBtn}
+                                    style={{ backgroundColor: fgColor }}
                                     onClick={() => pickColor('fg')}
                                     title="전경색 추출"
                                   >
@@ -999,9 +1028,9 @@ const App = () => {
                                 </div>
                                 <div className={styles.pickerBox}>
                                   <span>배경색</span>
-                                  <button 
-                                    className={styles.colorBtn} 
-                                    style={{ backgroundColor: bgColor }} 
+                                  <button
+                                    className={styles.colorBtn}
+                                    style={{ backgroundColor: bgColor }}
                                     onClick={() => pickColor('bg')}
                                     title="배경색 추출"
                                   >
@@ -1020,8 +1049,8 @@ const App = () => {
                       {group.gid === '1.3.2' && (
                         <div className={styles.manualEntrySection}>
                           <div className={styles.focusTrackerControls}>
-                            <button 
-                              className={`${styles.focusToggleBtn} ${isLinearView ? styles.active : ''}`} 
+                            <button
+                              className={`${styles.focusToggleBtn} ${isLinearView ? styles.active : ''}`}
                               onClick={toggleCSS}
                               title="CSS 비활성화를 통한 선형 구조 확인"
                             >
@@ -1034,8 +1063,8 @@ const App = () => {
                       {group.gid === '2.1.2' && (
                         <div className={styles.manualEntrySection}>
                           <div className={styles.focusTrackerControls}>
-                            <button 
-                              className={`${styles.focusToggleBtn} ${isFocusTracking ? styles.active : ''}`} 
+                            <button
+                              className={`${styles.focusToggleBtn} ${isFocusTracking ? styles.active : ''}`}
                               onClick={toggleFocusTracking}
                               title="초점 이동 경로 및 순서 시각화"
                             >
@@ -1043,8 +1072,8 @@ const App = () => {
                               {isFocusTracking ? "시각화 끄기" : "초점 순서 시각화"}
                             </button>
                             {isFocusTracking && (
-                              <button 
-                                className={styles.focusResetBtn} 
+                              <button
+                                className={styles.focusResetBtn}
                                 onClick={resetFocusPath}
                                 title="표시된 경로 초기화"
                               >
@@ -1060,9 +1089,9 @@ const App = () => {
                         group.items.map((item) => {
                           const isJudged = item.history.length > 1 || !!item.finalComment;
                           return (
-                            <article 
-                              key={item.id} 
-                              onClick={() => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); }} 
+                            <article
+                              key={item.id}
+                              onClick={() => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); }}
                               onKeyDown={(e) => handleKeyDown(e, () => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); })}
                               tabIndex={0}
                               role="button"
@@ -1129,18 +1158,18 @@ const App = () => {
                                   </div>
                                   {item.currentStatus !== '참고자료' && (
                                     <div className={styles.miniActions}>
-                                      <button onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        setJudgingId(item.id); 
-                                        setTempComment(item.finalComment); 
+                                      <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        setJudgingId(item.id);
+                                        setTempComment(item.finalComment);
                                         setSelectedJudgeStatus(item.currentStatus === '검토 필요' ? null : item.currentStatus);
                                       }} aria-label="전문가 판정 및 소견 기록">
                                         <Edit3 size={12} /> {item.finalComment ? '판정 수정' : '전문가 판정'}
                                       </button>
                                       <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }} aria-label="상세 정보 보기">상세</button>
                                       {item.elementInfo.tagName === 'MANUAL' && (
-                                        <button 
-                                          className={styles.deleteManualBtn} 
+                                        <button
+                                          className={styles.deleteManualBtn}
                                           onClick={(e) => deleteManualItem(e, item.id)}
                                           title="항목 삭제"
                                           aria-label="수동 항목 삭제"
@@ -1154,20 +1183,20 @@ const App = () => {
                               )}
                               {judgingId === item.id && (
                                 <div className={styles.miniJudge} onClick={e => e.stopPropagation()}>
-                                  <textarea 
-                                    placeholder="평가 소견을 입력하세요..." 
-                                    value={tempComment} 
-                                    onChange={e => setTempComment(e.target.value)} 
+                                  <textarea
+                                    placeholder="평가 소견을 입력하세요..."
+                                    value={tempComment}
+                                    onChange={e => setTempComment(e.target.value)}
                                     aria-label="전문가 소견 입력"
                                     style={{ boxSizing: 'border-box' }}
                                   />
                                   <div className={styles.judgeBtns}>
                                     <div className={styles.judgeStatusSelector}>
-                                      <button 
+                                      <button
                                         className={`${styles.jsBtn} ${styles.pass} ${selectedJudgeStatus === '적절' ? styles.active : ''}`}
                                         onClick={() => setSelectedJudgeStatus('적절')}
                                       >적절</button>
-                                      <button 
+                                      <button
                                         className={`${styles.jsBtn} ${styles.fail} ${selectedJudgeStatus === '오류' ? styles.active : ''}`}
                                         onClick={() => setSelectedJudgeStatus('오류')}
                                       >오류</button>
@@ -1203,7 +1232,7 @@ const App = () => {
               <h4>준수 기준</h4>
               <p>{guidelineData.compliance_criteria || guidelineData.criteria || '내용 없음'}</p>
             </section>
-            
+
             {guidelineData.error_types && typeof guidelineData.error_types === 'object' && (
               <section className={styles.guidelineSection}>
                 <h4>오류 유형</h4>
