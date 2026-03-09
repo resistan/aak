@@ -136,7 +136,11 @@ export function useAudit(
 				setLastTriggeredScanTime(0);
 				setIsAuditing(false);
 			}
-		}
+		} else { // 해당 URL에 대한 세션이 없으면 초기 페이지로
+      if (selectedSessionId !== null) {
+        setSelectedSessionId(null);
+      }
+    }
 	}, [currentTabInfo?.url, sessions, selectedSessionId, isManualDashboard, lastTriggeredScanTime, setSelectedSessionId, setIsManualDashboard]);
 
 	return {
