@@ -7,44 +7,22 @@ import { useSessionManager } from './hooks/useSessionManager';
 import { useAudit } from './hooks/useAudit';
 import { useContrastPicker } from './hooks/useContrastPicker';
 import { useModalState } from './hooks/useModalState';
-import rawStandards from '../engine/kwcag-standards.json';
+import { formatRelativeTime, normalizeUrl } from './utils/format';
+import { standardItemsDict, guidelineNames, getGuidelineName } from './utils/standards';
+import { copyToClipboard } from './utils/clipboard';
+import { handleKeyDown } from './utils/keyhelper';
 import { getContrastRatio } from './utils/color';
-
-// Vite 번들링 결과물(default 래핑)을 안정적으로 파싱하는 글로벌 함수
-const getStandardItems = () => {
-  if (!rawStandards) return null;
-  if ('items' in rawStandards) return (rawStandards as any).items;
-  if ('default' in rawStandards && (rawStandards as any).default.items) return (rawStandards as any).default.items;
-  return null;
-};
-const standardItemsDict = getStandardItems();
-
-const guidelineNames: Record<string, string> = {
-  "ALL": "전체 지침"
-};
-
-const normalizeUrl = (u: string) => u.replace(/\/$/, "").split('?')[0].split('#')[0];
-
-const formatRelativeTime = (timestamp: string) => {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffInMs = now.getTime() - date.getTime();
-  const diffInMins = Math.floor(diffInMs / (1000 * 60));
-
-  if (diffInMins < 1) return '방금 전';
-  if (diffInMins < 60) return `${diffInMins}분 전`;
-
-  const isToday = date.toDateString() === now.toDateString();
-  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-
-  if (isToday) return `오늘 ${timeStr}`;
-
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return `어제 ${timeStr}`;
-
-  return date.toLocaleDateString() + ' ' + timeStr;
-};
+import { Header } from './components/Header';
+import { AuditingView } from './components/AuditingView';
+import { SessionHistoryList } from './components/Dashboard/SessionHistoryList';
+import { DashboardView } from './components/Dashboard/DashboardView';
+import { SessionSelector } from './components/WorkArea/SessionSelector';
+import { StatsFilter } from './components/WorkArea/StatsFilter';
+import { ScoreBadge } from './components/WorkArea/GuidelineGroup/ScoreBadge';
+import { GroupToolbar } from './components/WorkArea/GuidelineGroup/GroupToolbar';
+import { ItemCard } from './components/WorkArea/GuidelineGroup/ItemCard';
+import { DetailPanel } from './components/Panels/DetailPanel';
+import { GuidelineInfoPanel } from './components/Panels/GuidelineInfoPanel';
 
 const App = () => {
   const { items, setItems, addReport, addReportsBatch, updateItemStatus, setGuidelineScore, removeSession, removeSessionById, clearItems, projectName } = useStore();
@@ -156,22 +134,6 @@ const App = () => {
     }
   };
 
-  // Accessibility helper for Enter/Space interaction
-  const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      callback();
-    }
-  };
-
-  const getGuidelineName = (id: string) => {
-    for (const group of kwcagHierarchy) {
-      const found = group.items.find(item => item.id === id);
-      if (found) return found.label;
-    }
-    return id;
-  };
-
   const handleSaveComment = (id: string) => {
     const item = items.find(i => i.id === id);
     const finalStatus = selectedJudgeStatus || item?.currentStatus || "검토 필요";
@@ -279,214 +241,42 @@ const App = () => {
 
   return (
     <div className={`${styles.container} ${isPopup ? styles.isPopup : ''}`}>
-      <header className={styles.extHeader}>
-        <div className={styles.brand}>
-          <ActivitySquare size={18} className={styles.logo} />
-          <div className={styles.titleInfo}>
-            <h1>A11Y Assistant</h1>
-            <span>{isPopup ? 'Window' : 'Extension'}</span>
-          </div>
-        </div>
-        <div className={styles.headerActions}>
-          {!isAuditing && (
-            <>
-              {selectedSessionId !== null && (
-                <button onClick={() => { setSelectedSessionId(null); setIsManualDashboard(true); }} title="홈으로 이동" aria-label="초기 화면으로 이동" className={styles.iconBtn}><Home size={16} /></button>
-              )}
-
-              {filteredItems.length > 0 && (isPopup ? (
-                <button
-                  onClick={() => {
-                    if (typeof chrome !== 'undefined' && chrome.sidePanel) {
-                      const targetWinId = sourceWindowId || chrome.windows.WINDOW_ID_CURRENT;
-                      (chrome as any).sidePanel.open({ windowId: targetWinId }, () => {
-                        window.close();
-                      });
-                    }
-                  }}
-                  title="사이드 패널로 돌리기"
-                  aria-label="사이드 패널로 돌리기"
-                  className={styles.iconBtn}
-                >
-                  <PanelRightClose size={16} />
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (typeof chrome !== 'undefined' && chrome.windows) {
-                      chrome.windows.getCurrent((currentWin) => {
-                        const winId = currentWin.id;
-                        chrome.windows.create({
-                          url: chrome.runtime.getURL(`sidepanel.html?mode=popup&windowId=${winId}`),
-                          type: 'popup',
-                          width: 750,
-                          height: 900
-                        });
-                        if (winId) chrome.runtime.sendMessage({ type: 'POP_OUT', windowId: winId });
-                      });
-                    }
-                  }}
-                  title="창 분리하기"
-                  aria-label="창 분리하기"
-                  className={styles.iconBtn}
-                >
-                  <ExternalLink size={16} />
-                </button>
-              ))}
-
-              {selectedSessionId !== null && (
-                <button onClick={generateMarkdownReport} title="리포트 추출" aria-label="마크다운 리포트 추출" className={`${styles.iconBtn} ${copyStatus ? styles.success : ''}`}><FileText size={16} /></button>
-              )}
-            </>
-          )}
-        </div>
-      </header>
+      <Header
+        isPopup={isPopup}
+        sourceWindowId={sourceWindowId}
+        isAuditing={isAuditing}
+        selectedSessionId={selectedSessionId}
+        filteredItemsCount={filteredItems.length}
+        copyStatus={copyStatus}
+        onGoHome={() => { setSelectedSessionId(null); setIsManualDashboard(true); }}
+        onGenerateReport={generateMarkdownReport}
+      />
 
       {isAuditing ? (
-        <div className={styles.dashboard} aria-busy="true" aria-live="polite">
-          <div className={styles.hero}>
-            <div className={styles.heroIcon} style={{ animationDuration: '1s' }}><RotateCcw size={48} /></div>
-            <h2>Precision Audit in Progress</h2>
-            {currentGuideline && (
-
-              <p style={{ color: 'var(--accent-highlight)', fontWeight: 'bold', fontSize: '1rem', margin: '0.8rem 0' }}>
-                검사항목 {currentGuideline} 분석 중...
-              </p>
-            )}
-
-            <p style={{ fontSize: '0.9rem', color: '#94a3b8', lineHeight: '1.6' }}>
-              KWCAG 2.2 표준 지침에 따라<br/>페이지의 모든 요소를 정밀 진단하고 있습니다.
-            </p>
-            <div className={styles.loadingBar}><div className={styles.progress}></div></div>
-          </div>
-        </div>
+        <AuditingView currentGuideline={currentGuideline} />
       ) : !selectedSessionId ? (
-        <div className={styles.dashboard}>
-          <div className={styles.hero}>
-            <div className={styles.heroIcon}><Scan size={48} /></div>
-            <h2>Ready to Audit</h2>
-            <p>현재 페이지의 접근성을 진단합니다.</p>
-            {currentTabInfo && (
-              <div className={styles.pagePreview}>
-                <span className={styles.pageTitle}>{currentTabInfo.title}</span>
-                <span className={styles.pageUrl}>{currentTabInfo.url}</span>
-              </div>
-            )}
-            <div className={styles.refreshNotice}>
-              <AlertCircle size={14} />
-              <span>정확한 진단을 위해 페이지를 <strong>새로고침</strong>한 후 시작해 주세요.</span>
-            </div>
-            <button
-              className={styles.startBtn}
-              onClick={handleStartAudit}
-              disabled={isAuditing}
-              aria-label="진단 시작"
-            >
-              {isAuditing ? '진단 중...' : '진단 시작 (Start Audit)'}
-            </button>
-            {sessions.length > 0 && (
-              <div className={styles.historyOption}>
-                <div className={styles.historyHeader}>
-                  <p>과거 진단 기록 ({sessions.length}건)</p>
-                  <button
-                    onClick={clearItems}
-                    title="전체 삭제"
-                    aria-label="모든 진단 기록 삭제"
-                    className={styles.deleteAllBtn}
-                  >
-                    <Trash2 size={14} />
-                    전체 삭제
-                  </button>
-                </div>
-                <div className={styles.historyList}>
-                  {sessions.map((s, idx) => (
-                    <div
-                      key={s.scanId}
-                      className={styles.historyItem}
-                      onClick={() => setSelectedSessionId(s.scanId)}
-                      onKeyDown={(e) => handleKeyDown(e, () => setSelectedSessionId(s.scanId))}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`${s.pageTitle}, ${formatRelativeTime(s.timestamp)} 진단 기록`}
-                    >
-                      <div className={styles.historyInfo}>
-                        <div className={styles.historyTimeRow}>
-                          <span className={styles.historyBadge}>#{sessions.length - idx}</span>
-                          <span className={styles.historyRelative}>{formatRelativeTime(s.timestamp)}</span>
-                          <span className={styles.historyAbsolute}>({new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })})</span>
-                        </div>
-                        <span className={styles.historyTitle}>{s.pageTitle}</span>
-                      </div>
-                      <div className={styles.historyActions}>
-                        <button
-                          className={styles.deleteBtn}
-                          onClick={(e) => handleDeleteSession(e, s.scanId)}
-                          onKeyDown={(e) => { e.stopPropagation(); handleKeyDown(e, () => handleDeleteSession(e, s.scanId)); }}
-                          title="삭제"
-                          aria-label="진단 기록 삭제"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                        <ChevronRight size={14} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <DashboardView
+          currentTabInfo={currentTabInfo}
+          isAuditing={isAuditing}
+          sessions={sessions}
+          onStartAudit={handleStartAudit}
+          onSelectSession={setSelectedSessionId}
+          onDeleteSession={handleDeleteSession}
+          onClearAll={clearItems}
+        />
       ) : (
         <div className={styles.workArea}>
-          <div className={styles.sessionSelector}>
-            <Clock size={12} />
-            <select
-              value={selectedSessionId || ""}
-              onChange={(e) => setSelectedSessionId(Number(e.target.value))}
-              aria-label="진단 세션 선택"
-            >
-              {sessions.map(s => (
-                <option key={s.scanId} value={s.scanId}>
-                  {new Date(s.timestamp).toLocaleString()} ({s.pageTitle})
-                </option>
-              ))}
-            </select>
-          </div>
+          <SessionSelector
+            selectedSessionId={selectedSessionId}
+            setSelectedSessionId={setSelectedSessionId}
+            sessions={sessions}
+          />
 
-          <div className={styles.statsSummary} role="tablist">
-            <button
-              className={`${styles.statLine} ${statusFilter === 'ALL' ? styles.active : ''}`}
-              onClick={() => setStatusFilter('ALL')}
-              role="tab"
-              aria-selected={statusFilter === 'ALL'}
-            >
-              전체 <span>{itemStats.total}</span>
-            </button>
-            <button
-              className={`${styles.statLine} ${styles.fail} ${statusFilter === '오류' ? styles.active : ''}`}
-              onClick={() => setStatusFilter('오류')}
-              role="tab"
-              aria-selected={statusFilter === '오류'}
-            >
-              오류 <span>{itemStats.error}</span>
-            </button>
-            <button
-              className={`${styles.statLine} ${styles.review} ${statusFilter === '검토 필요' ? styles.active : ''}`}
-              onClick={() => setStatusFilter('검토 필요')}
-              role="tab"
-              aria-selected={statusFilter === '검토 필요'}
-            >
-              검토 필요 <span>{itemStats.review}</span>
-            </button>
-            <button
-              className={`${styles.statLine} ${styles.pass} ${statusFilter === '적절' ? styles.active : ''}`}
-              onClick={() => setStatusFilter('적절')}
-              role="tab"
-              aria-selected={statusFilter === '적절'}
-            >
-              검토 완료 <span>{itemStats.pass}</span>
-            </button>
-          </div>
+          <StatsFilter
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            itemStats={itemStats}
+          />
 
           <div className={styles.groupedList}>
             {allGroupedItems.map((group) => {
@@ -510,123 +300,12 @@ const App = () => {
                       <span className={styles.countBadge} aria-label={`검출 항목 ${group.items.length}개`}>{group.items.length}</span>
                     </div>
                     <div className={styles.headerRight}>
-                      {(() => {
-                        const total = group.items.length;
-                        const manualScore = total > 0 ? group.items[0].manualScore : undefined;
-
-                        if (manualScore !== undefined) {
-                          return (
-                            <span
-                              className={`${styles.scoreBadge} ${manualScore < 60 ? styles.bad : manualScore < 90 ? styles.warning : styles.good}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const val = prompt("점수 입력 (0-100):", manualScore.toString());
-                                if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
-                              }}
-                              onKeyDown={(e) => {
-                                e.stopPropagation();
-                                handleKeyDown(e, () => {
-                                  const val = prompt("점수 입력 (0-100):", manualScore.toString());
-                                  if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
-                                });
-                              }}
-                              tabIndex={0}
-                              role="button"
-                              title="클릭하여 점수를 수정할 수 있습니다."
-                              aria-label={`수동 점수 ${manualScore}점, 수정하려면 클릭`}
-                            >
-                              {manualScore}점 (수동)
-                            </span>
-                          );
-                        }
-
-                        if (total === 0) return (
-                          <span
-                            className={styles.naBadge}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              alert("N/A 항목은 검출된 요소가 없어 점수를 저장할 수 없습니다.");
-                            }}
-                            tabIndex={0}
-                            role="button"
-                            aria-label="N/A 항목"
-                          >
-                            N/A
-                          </span>
-                        );
-
-                        let pass = 0, fail = 0, review = 0, calcTotal = 0;
-                        group.items.forEach(i => {
-                          if (i.currentStatus === '참고자료') return; // 점수 계산에서 제외
-                          const weight = (i as any).isSummary && (i as any).passCount ? (i as any).passCount : 1;
-                          calcTotal += weight;
-                          if (i.currentStatus === '적절') pass += weight;
-                          else if (['오류', '부적절'].includes(i.currentStatus)) fail += weight;
-                          else if (['검토 필요', '수정 권고'].includes(i.currentStatus)) review += weight;
-                        });
-
-                        // '수동 검사 필요' 문구로 점수를 가리는 로직 완화 (1.1.1, 3.1.1 등 핵심 지침은 점수를 우선 표시)
-                        const skipManualBadgeGids = ['1.1.1', '3.1.1'];
-                        if (fail === 0 && review > 0 && group.items.some(i => i.currentStatus === '검토 필요') && !skipManualBadgeGids.includes(group.gid)) {
-                          return (
-                            <span
-                              className={`${styles.scoreBadge} ${styles.manual}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const val = prompt("수동 검사 점수 입력 (0-100):");
-                                if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
-                              }}
-                              onKeyDown={(e) => {
-                                e.stopPropagation();
-                                handleKeyDown(e, () => {
-                                  const val = prompt("수동 검사 점수 입력 (0-100):");
-                                  if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
-                                });
-                              }}
-                              tabIndex={0}
-                              role="button"
-                              title="자동 진단이 어려운 항목입니다. 클릭하여 직접 점수를 입력하세요."
-                              aria-label="수동 검사 필요, 점수를 입력하려면 클릭"
-                            >
-                              수동 검사 필요
-                            </span>
-                          );
-                        }
-
-                        let score = 100;
-                        const exhaustiveGids = ['1.1.1', '1.3.1', '1.4.3', '2.1.1', '2.4.2', '2.4.3', '2.5.3', '3.1.1', '3.3.2'];
-                        if (exhaustiveGids.includes(group.gid)) {
-                          score = Math.round(((pass * 100 + review * 50) / (calcTotal * 100)) * 100);
-                        } else {
-                          const rawScore = 100 * Math.pow(0.8, fail) * Math.pow(0.95, review);
-                          score = Math.round(rawScore);
-                          if (calcTotal > 0 && pass === calcTotal) score = 100;
-                        }
-
-                        return (
-                          <span
-                            className={`${styles.scoreBadge} ${score < 60 ? styles.bad : score < 90 ? styles.warning : styles.good}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const val = prompt("점수 직접 수정 (0-100):", score.toString());
-                              if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
-                            }}
-                            onKeyDown={(e) => {
-                              e.stopPropagation();
-                              handleKeyDown(e, () => {
-                                const val = prompt("점수 직접 수정 (0-100):", score.toString());
-                                if (val !== null && selectedSessionId) setGuidelineScore(selectedSessionId, group.gid, parseInt(val));
-                              });
-                            }}
-                            tabIndex={0}
-                            role="button"
-                            title="클릭하여 점수를 직접 수정할 수 있습니다."
-                            aria-label={`진단 점수 ${score}점, 수정하려면 클릭`}
-                          >
-                            {score}점
-                          </span>
-                        );
-                      })()}
+                      <ScoreBadge
+                        gid={group.gid}
+                        items={group.items}
+                        selectedSessionId={selectedSessionId}
+                        setGuidelineScore={setGuidelineScore}
+                      />
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -658,259 +337,60 @@ const App = () => {
 
                   {isExpanded && (
                     <div className={styles.groupContent} id={`group-content-${group.gid}`}>
-                      {manualEntryGid === group.gid && (
-                        <div className={styles.manualEntrySection}>
-                          <div className={styles.manualEntryForm}>
-                            <div className={styles.formHeader}>
-                              <span>새 검토 의견 추가</span>
-                              <button onClick={() => { setManualEntryGid(null); setManualContrastName(""); setManualComment(""); setSelectedJudgeStatus(null); }} aria-label="닫기"><X size={14} /></button>
-                            </div>
-                            <input type="text" placeholder="항목 이름 (예: 누락된 팝업 타이틀)" value={manualContrastName} onChange={e => setManualContrastName(e.target.value)} className={styles.manualInput} />
-                            <textarea placeholder="평가 소견을 입력하세요..." value={manualComment} onChange={e => setManualComment(e.target.value)} aria-label="전문가 소견 입력" style={{ boxSizing: 'border-box', width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '8px', minHeight: '60px', marginTop: '8px', fontSize: '12px', color: 'var(--text-color)' }} />
-                            <div className={styles.formFooter}>
-                              <div className={styles.judgeStatusSelector}>
-                                <button className={`${styles.jsBtn} ${styles.pass} ${selectedJudgeStatus === '적절' ? styles.active : ''}`} onClick={() => setSelectedJudgeStatus('적절')}>적절</button>
-                                <button className={`${styles.jsBtn} ${styles.fail} ${selectedJudgeStatus === '오류' ? styles.active : ''}`} onClick={() => setSelectedJudgeStatus('오류')}>오류</button>
-                              </div>
-                              <button className={styles.saveBtn} onClick={() => handleSaveManualOpinion(group.gid)} disabled={!selectedJudgeStatus || !manualContrastName.trim()}>평가 저장</button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {group.gid === '1.1.1' && (
-                        <div className={styles.manualEntrySection}>
-                          <div className={styles.focusTrackerControls}>
-                            <button
-                              className={`${styles.focusToggleBtn} ${isImageAltView ? styles.active : ''}`}
-                              onClick={toggleImageAlt}
-                              title="이미지 대체 텍스트 오버레이 표시"
-                            >
-                              <ImageIcon size={14} />
-                              {isImageAltView ? "이미지 보기" : "대체텍스트 보기"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {group.gid === '1.4.3' && (
-                        <div className={styles.manualEntrySection}>
-                          {!isContrastOpen ? (
-                            <button
-                              className={styles.addCaseBtn}
-                              onClick={() => setIsContrastOpen(true)}
-                              title="수동 명도 대비 측정 항목 추가"
-                            >
-                              <PlusCircle size={14} /> 명도 대비 케이스 추가
-                            </button>
-                          ) : (
-                            <div className={styles.manualEntryForm}>
-                              <div className={styles.formHeader}>
-                                <span>새 명도 대비 측정</span>
-                                <button onClick={() => { setIsContrastOpen(false); setManualContrastName(""); }} aria-label="닫기"><X size={14} /></button>
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="항목 이름 (예: 메인 배너 텍스트)"
-                                value={manualContrastName}
-                                onChange={e => setManualContrastName(e.target.value)}
-                                className={styles.manualInput}
-                              />
-                              <div className={styles.pickerRow}>
-                                <div className={styles.pickerBox}>
-                                  <span>전경색</span>
-                                  <button
-                                    className={styles.colorBtn}
-                                    style={{ backgroundColor: fgColor }}
-                                    onClick={() => pickColor('fg')}
-                                    title="전경색 추출"
-                                  >
-                                    {fgColor.toUpperCase()}
-                                  </button>
-                                </div>
-                                <div className={styles.pickerBox}>
-                                  <span>배경색</span>
-                                  <button
-                                    className={styles.colorBtn}
-                                    style={{ backgroundColor: bgColor }}
-                                    onClick={() => pickColor('bg')}
-                                    title="배경색 추출"
-                                  >
-                                    {bgColor.toUpperCase()}
-                                  </button>
-                                </div>
-                              </div>
-                              <div className={styles.formFooter}>
-                                <div className={styles.previewRatio}>대비 {getContrastRatio(fgColor, bgColor)}:1</div>
-                                <button className={styles.saveBtn} onClick={handleAddManualContrast}>저장</button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {group.gid === '1.3.2' && (
-                        <div className={styles.manualEntrySection}>
-                          <div className={styles.focusTrackerControls}>
-                            <button
-                              className={`${styles.focusToggleBtn} ${isLinearView ? styles.active : ''}`}
-                              onClick={toggleCSS}
-                              title="CSS 비활성화를 통한 선형 구조 확인"
-                            >
-                              <LayoutList size={14} />
-                              {isLinearView ? "CSS 켜기" : "선형화(CSS 끄기)"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {group.gid === '2.1.2' && (
-                        <div className={styles.manualEntrySection}>
-                          <div className={styles.focusTrackerControls}>
-                            <button
-                              className={`${styles.focusToggleBtn} ${isFocusTracking ? styles.active : ''}`}
-                              onClick={toggleFocusTracking}
-                              title="초점 이동 경로 및 순서 시각화"
-                            >
-                              <MousePointer2 size={14} />
-                              {isFocusTracking ? "시각화 끄기" : "초점 순서 시각화"}
-                            </button>
-                            {isFocusTracking && (
-                              <button
-                                className={styles.focusResetBtn}
-                                onClick={resetFocusPath}
-                                title="표시된 경로 초기화"
-                              >
-                                <RotateCcw size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      <GroupToolbar
+                        gid={group.gid}
+                        manualEntryGid={manualEntryGid}
+                        onCloseManualEntry={() => setManualEntryGid(null)}
+                        manualItemName={manualContrastName}
+                        setManualItemName={setManualContrastName}
+                        manualComment={manualComment}
+                        setManualComment={setManualComment}
+                        selectedJudgeStatus={selectedJudgeStatus}
+                        setSelectedJudgeStatus={setSelectedJudgeStatus}
+                        onSaveManualOpinion={() => handleSaveManualOpinion(group.gid)}
+                        isImageAltView={isImageAltView}
+                        toggleImageAlt={toggleImageAlt}
+                        isContrastOpen={isContrastOpen}
+                        setIsContrastOpen={setIsContrastOpen}
+                        contrastItemName={manualContrastName}
+                        setContrastItemName={setManualContrastName}
+                        fgColor={fgColor}
+                        bgColor={bgColor}
+                        pickColor={pickColor}
+                        onSaveContrast={handleAddManualContrast}
+                        isLinearView={isLinearView}
+                        toggleCSS={toggleCSS}
+                        isFocusTracking={isFocusTracking}
+                        toggleFocusTracking={toggleFocusTracking}
+                        resetFocusPath={resetFocusPath}
+                      />
                       {group.items.length === 0 ? (
-                        <div className={styles.emptyState}>검출된 항목이 없습니다.</div>
+                        <p className={styles.emptyState}>검출된 항목이 없습니다.</p>
                       ) : (
-                        group.items.map((item) => {
-                          const isJudged = item.history.length > 1 || !!item.finalComment;
-                          return (
-                            <article
-                              key={item.id}
-                              onClick={() => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); }}
-                              onKeyDown={(e) => handleKeyDown(e, () => { setSelectedId(item.id); handleLocate(item.elementInfo.selector); })}
-                              tabIndex={0}
-                              role="button"
-                              aria-selected={selectedId === item.id}
-                              className={`${styles.miniCard} ${selectedId === item.id ? styles.selected : ''} ${isJudged ? styles.judged : ''}`}
-                            >
-                              <div className={styles.cardLayout}>
-                                {!isJudged && item.elementInfo.src && item.elementInfo.src !== 'N/A' && item.guideline_id !== '1.2.1' && (
-                                  <div className={styles.thumbBox}><img src={item.elementInfo.src} alt="미리보기" /></div>
-                                )}
-                                <div className={styles.cardMain}>
-                                  <div className={styles.cardTop}>
-                                    <div className={`${styles.miniStatus} ${styles[item.currentStatus.replace(' ', '_')]}`}>{item.currentStatus}</div>
-                                    {item.elementInfo.selector !== 'outline' && (
-                                      <div className={styles.quickJudge}>
-                                        <button className={styles.qPass} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '적절'); }} title="적절로 판정" aria-label="적절로 판정">적절</button>
-                                        <button className={styles.qFail} onClick={(e) => { e.stopPropagation(); handleJudge(item.id, '오류'); }} title="오류로 판정" aria-label="오류로 판정">오류</button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <h3 className={isJudged ? styles.judgedTitle : ''}>{item.result?.message}</h3>
-                                  {!isJudged && (
-                                    <>
-                                      {item.guideline_id === '1.1.1' && (
-                                        <div className={styles.markupSnippet}>
-                                          &lt;{item.elementInfo.tagName.toLowerCase()} <span className={styles.attrName}>{(item.elementInfo as any).sourceAttr || 'alt'}</span>=<span className={styles.attrVal}>"{item.elementInfo.alt || ''}"</span> ... /&gt;
-                                        </div>
-                                      )}
-                                      {item.guideline_id === '1.4.3' && (item.context as any).color && (
-                                        <div className={styles.contrastPreview} style={{ color: (item.context as any).color, backgroundColor: (item.context as any).backgroundColor }}>
-                                          Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
-                                        </div>
-                                      )}
-                                    </>
-                                  )}
-                                  {item.elementInfo.selector === 'outline' ? (
-                                    <span className={styles.outlineLabel}>Heading Outline</span>
-                                  ) : (
-                                    <code className={styles.selector}>{item.elementInfo.selector}</code>
-                                  )}
-                                </div>
-                              </div>
-                              {selectedId === item.id && (
-                                <div className={styles.miniDetail}>
-                                  <div className={styles.smartContextView}>
-                                    {item.guideline_id === '1.1.1' ? (
-                                      <>
-                                        <span>...{item.context.smartContext.split(item.elementInfo.alt || "")[0]}</span>
-                                        <span className={styles.highlight}>[{((item.elementInfo as any).sourceAttr || 'alt')}="{item.elementInfo.alt || ''}"]</span>
-                                        <span>{item.context.smartContext.split(item.elementInfo.alt || "")[1]}...</span>
-                                      </>
-                                    ) : item.guideline_id === '2.4.2' && item.elementInfo.selector === 'outline' ? (
-                                      <div className={styles.outlineView}>
-                                        {(item.context as any).outline?.map((h: any, idx: number) => (
-                                          <div key={idx} className={`${styles.outlineItem} ${styles['h'+h.level]}`}>
-                                            <span className={styles.level}>H{h.level}</span>
-                                            <span className={styles.text}>{h.text || '(텍스트 없음)'}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <span>"{item.context.smartContext}"</span>
-                                    )}
-                                  </div>
-                                  {item.currentStatus !== '참고자료' && (
-                                    <div className={styles.miniActions}>
-                                      <button onClick={(e) => {
-                                        e.stopPropagation();
-                                        setJudgingId(item.id);
-                                        setTempComment(item.finalComment);
-                                        setSelectedJudgeStatus(item.currentStatus === '검토 필요' ? null : item.currentStatus);
-                                      }} aria-label="전문가 판정 및 소견 기록">
-                                        <Edit3 size={12} /> {item.finalComment ? '판정 수정' : '전문가 판정'}
-                                      </button>
-                                      <button onClick={(e) => { e.stopPropagation(); setIsPropPanelOpen(true); }} aria-label="상세 정보 보기">상세</button>
-                                      {item.elementInfo.tagName === 'MANUAL' && (
-                                        <button
-                                          className={styles.deleteManualBtn}
-                                          onClick={(e) => deleteManualItem(e, item.id)}
-                                          title="항목 삭제"
-                                          aria-label="수동 항목 삭제"
-                                        >
-                                          <Trash2 size={12} />
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              {judgingId === item.id && (
-                                <div className={styles.miniJudge} onClick={e => e.stopPropagation()}>
-                                  <textarea
-                                    placeholder="평가 소견을 입력하세요..."
-                                    value={tempComment}
-                                    onChange={e => setTempComment(e.target.value)}
-                                    aria-label="전문가 소견 입력"
-                                    style={{ boxSizing: 'border-box' }}
-                                  />
-                                  <div className={styles.judgeBtns}>
-                                    <div className={styles.judgeStatusSelector}>
-                                      <button
-                                        className={`${styles.jsBtn} ${styles.pass} ${selectedJudgeStatus === '적절' ? styles.active : ''}`}
-                                        onClick={() => setSelectedJudgeStatus('적절')}
-                                      >적절</button>
-                                      <button
-                                        className={`${styles.jsBtn} ${styles.fail} ${selectedJudgeStatus === '오류' ? styles.active : ''}`}
-                                        onClick={() => setSelectedJudgeStatus('오류')}
-                                      >오류</button>
-                                    </div>
-                                    <div className={styles.actionBtns}>
-                                      <button onClick={() => { setJudgingId(null); setSelectedJudgeStatus(null); }} className={styles.cBtn}>취소</button>
-                                      <button onClick={() => handleSaveComment(item.id)} className={styles.sBtn} disabled={!selectedJudgeStatus && item.currentStatus === '검토 필요'}>평가 저장</button>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </article>
-                          );
-                        })
+                        group.items.map((item) => (
+                          <ItemCard
+                            key={item.id}
+                            item={item}
+                            isSelected={selectedId === item.id}
+                            isJudging={judgingId === item.id}
+                            onSelect={() => setSelectedId(item.id)}
+                            onLocate={() => handleLocate(item.elementInfo.selector)}
+                            onQuickJudge={(status) => handleJudge(item.id, status)}
+                            onStartJudging={() => {
+                              setJudgingId(item.id);
+                              setTempComment(item.finalComment);
+                              setSelectedJudgeStatus(item.currentStatus === '검토 필요' ? null : item.currentStatus);
+                            }}
+                            tempComment={tempComment}
+                            setTempComment={setTempComment}
+                            selectedJudgeStatus={selectedJudgeStatus}
+                            setSelectedJudgeStatus={setSelectedJudgeStatus}
+                            onSaveComment={() => handleSaveComment(item.id)}
+                            onCancelJudging={() => { setJudgingId(null); setSelectedJudgeStatus(null); }}
+                            onOpenDetail={() => setIsPropPanelOpen(true)}
+                            onDeleteManual={item.elementInfo.tagName === 'MANUAL' ? () => deleteManualItem({ stopPropagation: () => {} } as React.MouseEvent, item.id) : undefined}
+                          />
+                        ))
                       )}
                     </div>
                   )}
@@ -922,74 +402,21 @@ const App = () => {
       )}
 
       {selectedGuidelineInfo && guidelineData && (
-        <div className={styles.fullPropPanel} ref={guidelineInfoRef} role="dialog" aria-modal="true" aria-label={`${selectedGuidelineInfo} 지침 상세 정보`}>
-          <header>
-            <h3>{selectedGuidelineInfo} {guidelineData.name || '지침 정보'}</h3>
-            <button onClick={() => setSelectedGuidelineInfo(null)} aria-label="닫기"><X size={18} /></button>
-          </header>
-          <div className={styles.propBody}>
-            <section className={styles.guidelineSection}>
-              <h4>준수 기준</h4>
-              <p>{guidelineData.compliance_criteria || guidelineData.criteria || '내용 없음'}</p>
-            </section>
-
-            {guidelineData.error_types && typeof guidelineData.error_types === 'object' && (
-              <section className={styles.guidelineSection}>
-                <h4>오류 유형</h4>
-                <ul className={styles.errorTypeList}>
-                  {Object.entries(guidelineData.error_types).map(([code, desc]) => (
-                    <li key={code}>
-                      <strong>{code}</strong>
-                      <span>{String(desc)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {Array.isArray(guidelineData.detailed_descriptions) && guidelineData.detailed_descriptions.length > 0 && (
-              <section className={styles.guidelineSection}>
-                <h4>세부 설명</h4>
-                <ul className={styles.detailList}>
-                  {guidelineData.detailed_descriptions.map((desc: string, i: number) => (
-                    <li key={i}>{desc}</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </div>
-        </div>
+        <GuidelineInfoPanel
+          guidelineId={selectedGuidelineInfo}
+          data={guidelineData}
+          onClose={() => setSelectedGuidelineInfo(null)}
+          panelRef={guidelineInfoRef}
+        />
       )}
 
       {isPropPanelOpen && selectedItem && (
-        <div className={styles.fullPropPanel} ref={propPanelRef} role="dialog" aria-modal="true" aria-label="요소 상세 정보">
-          <header>
-            <h3>Detail View</h3>
-            <button onClick={() => setIsPropPanelOpen(false)} aria-label="닫기"><X size={18} /></button>
-          </header>
-          <div className={styles.propBody}>
-            <section>
-              <h4>Selector</h4>
-              <code>{selectedItem.elementInfo.selector}</code>
-            </section>
-            <section>
-              <h4>Context</h4>
-              <p>{selectedItem.context.smartContext}</p>
-            </section>
-            <section>
-              <h4>History</h4>
-              {selectedItem.history.map((h: any, i: number) => (
-                <div key={i} className={styles.histItem}>
-                  <span>{h.timestamp}</span>
-                  <strong>{h.status}</strong>
-                  <p>{h.comment}</p>
-                </div>
-              ))}
-            </section>
-          </div>
-        </div>
+        <DetailPanel
+          item={selectedItem}
+          onClose={() => setIsPropPanelOpen(false)}
+          panelRef={propPanelRef}
+        />
       )}
-
 
     </div>
   );
