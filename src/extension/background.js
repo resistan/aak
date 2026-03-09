@@ -17,25 +17,18 @@ chrome.runtime.onConnect.addListener((port) => {
 // Relay messages from Engine to UI
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("ABT: Background message received", message.type, sender.tab ? "from tab" : "from extension");
-  if (sender.tab) {
-    const relayTypes = ['UPDATE_ABT_LIST', 'UPDATE_ABT_LIST_BATCH', 'UPDATE_ABT_BATCH', 'SCAN_PROGRESS', 'SCAN_FINISHED'];
-    if (relayTypes.includes(message.type)) {
-      abtPorts.forEach(port => {
-        try { port.postMessage(message); } catch (e) { abtPorts.delete(port); }
-      });
-      chrome.runtime.sendMessage(message);
-    }
-  } 
 
-  // Relay commands from UI to Engine
-  else if (message.type === 'locate-element' || message.type === 'RUN_AUDIT' || message.type === 'TOGGLE_CSS' || message.type === 'TOGGLE_IMAGE_ALT' || message.type === 'TOGGLE_FOCUS_TRACKING' || message.type === 'RESET_FOCUS_TRACKING' || message.type === 'VISUALIZE_FULL_FOCUS_ORDER') {
+  // UI → Engine 명령 (메시지 타입으로 먼저 구분)
+  const uiCommands = ['locate-element', 'RUN_AUDIT', 'TOGGLE_CSS', 'TOGGLE_IMAGE_ALT', 'TOGGLE_FOCUS_TRACKING', 'RESET_FOCUS_TRACKING', 'VISUALIZE_FULL_FOCUS_ORDER'];
+
+  if (uiCommands.includes(message.type)) {
     const targetWinId = message.windowId;
-    
+
     const findAndSend = (queryOptions) => {
       chrome.tabs.query(queryOptions, (tabs) => {
         // Filter out extension pages
         const targetTab = tabs.find(t => t.url && !t.url.startsWith('chrome-extension://'));
-        
+
         if (targetTab) {
           chrome.tabs.sendMessage(targetTab.id, message, (response) => {
             if (chrome.runtime.lastError) {
@@ -55,12 +48,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     };
 
-    const options = targetWinId 
+    const options = targetWinId
       ? { active: true, windowId: targetWinId }
       : { active: true, lastFocusedWindow: true };
-    
+
     findAndSend(options);
-    return true; 
+    return true;
+  }
+
+  // Engine → UI 릴레이
+  else if (sender.tab) {
+    const relayTypes = ['UPDATE_ABT_LIST', 'UPDATE_ABT_LIST_BATCH', 'UPDATE_ABT_BATCH', 'SCAN_PROGRESS', 'SCAN_FINISHED'];
+    if (relayTypes.includes(message.type)) {
+      abtPorts.forEach(port => {
+        try { port.postMessage(message); } catch (e) { abtPorts.delete(port); }
+      });
+      chrome.runtime.sendMessage(message);
+    }
   }
 });
 
