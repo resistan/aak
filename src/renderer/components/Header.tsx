@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
 							</button>
 						)}
 
-						{filteredItemsCount > 0 && (isPopup ? (
+						{selectedSessionId !== null && filteredItemsCount > 0 && (isPopup ? (
 							<button
 								onClick={handleReturnToSidePanel}
 								title="사이드 패널로 돌리기"
