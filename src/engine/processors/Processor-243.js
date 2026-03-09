@@ -1,17 +1,17 @@
 /**
- * ABT Processor 2.4.3 (Link Purpose - In Context)
- * 
- * KWCAG 2.2 지침 2.4.3 적절한 링크 텍스트
- * 링크의 용도나 목적을 링크 텍스트만으로, 또는 링크가 포함된 맥락을 통해 명확히 알 수 있어야 합니다.
- * 
- * [진단 범위]
- * - 모든 <a> 요소 및 role="link" 요소
- * 
- * [주요 로직]
- * - 텍스트 부재 탐지: 링크 내부에 텍스트, aria-label, alt 등이 전혀 없는 경우 오류 판정
- * - 모호한 표현 필터링: '여기', '클릭', '자세히' 등 맥락 없이는 의미를 알 수 없는 단어 식별
- * - URL 노출 방지: 기계적인 URL(http...)을 그대로 링크 텍스트로 사용하는 경우 수정 권고
- */
+* ABT Processor 2.4.3 (Link Purpose - In Context)
+*
+* KWCAG 2.2 지침 2.4.3 적절한 링크 텍스트
+* 링크의 용도나 목적을 링크 텍스트만으로, 또는 링크가 포함된 맥락을 통해 명확히 알 수 있어야 합니다.
+*
+* [진단 범위]
+* - 모든 <a> 요소 및 role="link" 요소
+*
+* [주요 로직]
+* - 텍스트 부재 탐지: 링크 내부에 텍스트, aria-label, alt 등이 전혀 없는 경우 오류 판정
+* - 모호한 표현 필터링: '여기', '클릭', '자세히' 등 맥락 없이는 의미를 알 수 없는 단어 식별
+* - URL 노출 방지: 기계적인 URL(http...)을 그대로 링크 텍스트로 사용하는 경우 수정 권고
+*/
 class Processor243 {
   constructor() {
     this.id = "2.4.3";
@@ -20,9 +20,9 @@ class Processor243 {
   }
 
   /**
-   * 문서 내 모든 링크의 목적성(텍스트 적절성)을 전수 조사합니다.
-   * @returns {Promise<Array>} 진단 결과 리포트 배열
-   */
+  * 문서 내 모든 링크의 목적성(텍스트 적절성)을 전수 조사합니다.
+  * @returns {Promise<Array>} 진단 결과 리포트 배열
+  */
   async scan() {
     const reports = [];
     const links = document.querySelectorAll('a, [role="link"]');
@@ -32,7 +32,7 @@ class Processor243 {
       const ariaLabel = el.getAttribute('aria-label');
       const title = el.getAttribute('title');
       const alt = el.querySelector('img') ? el.querySelector('img').getAttribute('alt') : null;
-      
+
       const accessibleName = (text || ariaLabel || title || alt || "").trim();
 
       const describedByIds = el.getAttribute('aria-describedby');

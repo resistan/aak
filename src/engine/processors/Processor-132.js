@@ -1,18 +1,18 @@
 /**
- * ABT Processor 1.3.2 (Meaningful Sequence)
- * 
- * KWCAG 2.2 지침 1.3.2 콘텐츠의 선형 구조
- * 콘텐츠는 논리적인 순서로 읽히도록 마크업되어야 합니다. (헤딩 위계는 2.4.2에서 진단)
- * 콘텐츠는 논리적인 순서로 읽히도록 마크업되어야 하며, 특히 제목(Heading)의 위계가 올바라야 합니다.
- * 
- * [진단 범위]
- * - <h1> ~ <h6> 제목 요소
- * - 문서 전체의 아웃라인 구조
- * 
- * [주요 로직]
- * - 시각적 순서 vs 마크업 순서: CSS order, direction 속성 등을 통한 논리적 맥락 유지 확인
- * - Layout Table 탐지: 표를 이용한 레이아웃 구성 여부 확인
- */
+* ABT Processor 1.3.2 (Meaningful Sequence)
+*
+* KWCAG 2.2 지침 1.3.2 콘텐츠의 선형 구조
+* 콘텐츠는 논리적인 순서로 읽히도록 마크업되어야 합니다. (헤딩 위계는 2.4.2에서 진단)
+* 콘텐츠는 논리적인 순서로 읽히도록 마크업되어야 하며, 특히 제목(Heading)의 위계가 올바라야 합니다.
+*
+* [진단 범위]
+* - <h1> ~ <h6> 제목 요소
+* - 문서 전체의 아웃라인 구조
+*
+* [주요 로직]
+* - 시각적 순서 vs 마크업 순서: CSS order, direction 속성 등을 통한 논리적 맥락 유지 확인
+* - Layout Table 탐지: 표를 이용한 레이아웃 구성 여부 확인
+*/
 class Processor132 {
   constructor() {
     this.id = "1.3.2";
@@ -26,7 +26,7 @@ class Processor132 {
     for (const el of allElements) {
       // 스타일 계산이 필요한 검사 (비용이 있으므로 필요한 경우에만 수행)
       const style = window.getComputedStyle(el);
-      
+
       // 1. Flex/Grid order 속성 사용 (시각적 순서 변경)
       if (style.order !== '0' && style.order !== 'initial') {
         reports.push(this.createReport(el, "검토 필요", `CSS 'order' 속성(${style.order})이 사용되었습니다. 시각적 순서와 마크업 순서가 일치하여 논리적 맥락을 유지하는지 확인하세요.`));
@@ -47,7 +47,7 @@ class Processor132 {
     // 5. Layout Table 내의 구조 (비선형적 데이터 흐름 가능성)
     const layoutTables = document.querySelectorAll('table[role="presentation"], table[role="none"]');
     for (const table of layoutTables) {
-        reports.push(this.createReport(table, "검토 필요", "레이아웃용 표가 감지되었습니다. CSS 레이아웃(Flex/Grid)으로 전환을 권장하며, 제거 시에도 선형 구조가 유지되는지 확인하세요."));
+      reports.push(this.createReport(table, "검토 필요", "레이아웃용 표가 감지되었습니다. CSS 레이아웃(Flex/Grid)으로 전환을 권장하며, 제거 시에도 선형 구조가 유지되는지 확인하세요."));
     }
 
     // [단계 F] 헤딩 아웃라인 수집 로직 제거 (2.4.2로 이동됨)

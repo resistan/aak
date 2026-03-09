@@ -1,9 +1,9 @@
 /**
- * ABT Processor 2.2.2 (Pause, Stop, Hide)
- * 
- * KWCAG 2.2 지침 2.2.2 정지 기능 제공
- * 자동으로 움직이거나 업데이트되는 콘텐츠는 사용자가 이를 일시 정지하거나 멈출 수 있어야 합니다.
- */
+* ABT Processor 2.2.2 (Pause, Stop, Hide)
+*
+* KWCAG 2.2 지침 2.2.2 정지 기능 제공
+* 자동으로 움직이거나 업데이트되는 콘텐츠는 사용자가 이를 일시 정지하거나 멈출 수 있어야 합니다.
+*/
 class Processor222 {
   constructor() {
     this.id = "2.2.2";
@@ -12,7 +12,7 @@ class Processor222 {
 
   async scan() {
     const reports = [];
-    
+
     // 1. 미디어 요소 탐색 (자동 재생 및 반복 여부 확인)
     const mediaElements = document.querySelectorAll('video, audio');
     for (const el of mediaElements) {
@@ -33,8 +33,8 @@ class Processor222 {
         guideline_id: this.id,
         elementInfo: { tagName: "document", selector: "body" },
         context: { smartContext: "자동 변경 콘텐츠 검토" },
-        result: { 
-          status: "참고자료", 
+        result: {
+          status: "참고자료",
           message: "페이지 내에 자동으로 재생되거나 갱신되는 콘텐츠(슬라이더, 롤링 배너 등)가 있다면 사용자가 이를 멈출 수 있는 수단이 제공되는지 확인하세요.",
           rules: ["Rule 222. (General Manual Review)"]
         },
@@ -74,7 +74,7 @@ class Processor222 {
   analyzeCarousel(el) {
     const controls = el.querySelectorAll('button, [role="button"], a');
     let hasPauseText = false;
-    
+
     controls.forEach(ctrl => {
       const text = (ctrl.textContent + ' ' + (ctrl.getAttribute('aria-label') || '')).toLowerCase();
       if (text.includes('정지') || text.includes('멈춤') || text.includes('pause') || text.includes('stop')) {
@@ -87,16 +87,16 @@ class Processor222 {
     else if (el.className.toLowerCase().includes('slick')) detectedLibrary = "Slick";
 
     const status = "검토 필요";
-    let message = detectedLibrary 
-      ? `자동 갱신 가능성이 높은 '${detectedLibrary}' 라이브러리 요소가 탐지되었습니다.`
-      : "자동으로 갱신되는 슬라이더/캐러셀일 경우, 정지(Pause) 버튼이 제공되는지 수동으로 확인하세요.";
+    let message = detectedLibrary
+    ? `자동 갱신 가능성이 높은 '${detectedLibrary}' 라이브러리 요소가 탐지되었습니다.`
+    : "자동으로 갱신되는 슬라이더/캐러셀일 경우, 정지(Pause) 버튼이 제공되는지 수동으로 확인하세요.";
 
     if (hasPauseText) {
       message += " 내부에서 정지(Pause/Stop) 관련 키워드가 감지되었습니다. 실제로 기능이 동작하는지 확인하세요.";
     } else if (detectedLibrary) {
       message += " 내부에 명시적인 정지 버튼이 보이지 않습니다. 정지 수단 제공 여부를 확인하세요.";
     }
-      
+
     return this.createReport(el, status, message, ["Rule 222. (Carousel Controls)"]);
   }
 

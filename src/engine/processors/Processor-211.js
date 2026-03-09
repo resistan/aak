@@ -1,20 +1,20 @@
 /**
- * ABT Processor 2.1.1 (Keyboard Accessibility)
- * 
- * KWCAG 2.2 지침 2.1.1 키보드 사용 보장
- * 모든 기능은 마우스 없이 키보드만으로도 사용할 수 있어야 합니다.
- * 
- * [진단 범위]
- * - 대화형 요소 (<a>, <button>, <input> 등)
- * - 클릭 이벤트 핸들러가 있는 모든 비표준 요소
- * - 모달 대화상자 ([role="dialog"])
- * 
- * [주요 로직]
- * - [케이스 A] 미보장 탐지: 클릭 핸들러가 있으나 tabindex가 없는 요소
- * - [케이스 B] 접근 차단: 대화형 요소인데 tabindex="-1"로 포커스가 막힌 경우
- * - [케이스 C] 순서 왜곡: tabindex가 0보다 큰 양수인 경우
- * - [케이스 D] 모달 검토: 닫기 버튼 부재 또는 Focus Trap 가능성 탐지
- */
+* ABT Processor 2.1.1 (Keyboard Accessibility)
+*
+* KWCAG 2.2 지침 2.1.1 키보드 사용 보장
+* 모든 기능은 마우스 없이 키보드만으로도 사용할 수 있어야 합니다.
+*
+* [진단 범위]
+* - 대화형 요소 (<a>, <button>, <input> 등)
+* - 클릭 이벤트 핸들러가 있는 모든 비표준 요소
+* - 모달 대화상자 ([role="dialog"])
+*
+* [주요 로직]
+* - [케이스 A] 미보장 탐지: 클릭 핸들러가 있으나 tabindex가 없는 요소
+* - [케이스 B] 접근 차단: 대화형 요소인데 tabindex="-1"로 포커스가 막힌 경우
+* - [케이스 C] 순서 왜곡: tabindex가 0보다 큰 양수인 경우
+* - [케이스 D] 모달 검토: 닫기 버튼 부재 또는 Focus Trap 가능성 탐지
+*/
 class Processor211 {
   constructor() {
     this.id = "2.1.1";
@@ -24,22 +24,22 @@ class Processor211 {
   }
 
   /**
-   * 문서 내 모든 요소의 키보드 접근성 및 포커스 가능 여부를 진단합니다.
-   * @returns {Promise<Array>} 진단 결과 리포트 배열
-   */
+  * 문서 내 모든 요소의 키보드 접근성 및 포커스 가능 여부를 진단합니다.
+  * @returns {Promise<Array>} 진단 결과 리포트 배열
+  */
   async scan() {
     const reports = [];
-    
+
     // 1. 모든 요소 탐색 (이벤트 리스너가 있는 비표준 요소 찾기 위해)
     const allElements = document.querySelectorAll('*');
-    
+
     for (const el of allElements) {
       const report = this.analyze(el);
       if (report) {
         reports.push(report);
       }
     }
-    
+
     return reports;
   }
 

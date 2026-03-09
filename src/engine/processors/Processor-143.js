@@ -1,18 +1,18 @@
 /**
- * ABT Processor 1.4.3 (Contrast - Minimum)
- * 
- * KWCAG 2.2 지침 1.4.3 텍스트 콘텐츠의 명도 대비
- * 텍스트와 배경의 명도 대비는 최소 4.5:1 (큰 텍스트는 3:1) 이상이어야 합니다.
- * 
- * [진단 범위]
- * - 문서 내 모든 텍스트 노드를 포함하는 요소
- * - 시각적으로 숨겨진 요소(isHidden)는 제외
- * 
- * [주요 로직]
- * - 상대 휘도(Relative Luminance) 계산: sRGB 채널 값을 기반으로 인간의 눈이 느끼는 밝기 도출
- * - 대비 비율 계산: (L1 + 0.05) / (L2 + 0.05) 공식을 사용하여 비율 산출
- * - 폰트 크기 보정: 18pt 이상 또는 14pt(Bold) 이상인 경우 3:1 기준 적용
- */
+* ABT Processor 1.4.3 (Contrast - Minimum)
+*
+* KWCAG 2.2 지침 1.4.3 텍스트 콘텐츠의 명도 대비
+* 텍스트와 배경의 명도 대비는 최소 4.5:1 (큰 텍스트는 3:1) 이상이어야 합니다.
+*
+* [진단 범위]
+* - 문서 내 모든 텍스트 노드를 포함하는 요소
+* - 시각적으로 숨겨진 요소(isHidden)는 제외
+*
+* [주요 로직]
+* - 상대 휘도(Relative Luminance) 계산: sRGB 채널 값을 기반으로 인간의 눈이 느끼는 밝기 도출
+* - 대비 비율 계산: (L1 + 0.05) / (L2 + 0.05) 공식을 사용하여 비율 산출
+* - 폰트 크기 보정: 18pt 이상 또는 14pt(Bold) 이상인 경우 3:1 기준 적용
+*/
 class Processor143 {
   constructor() {
     this.id = "1.4.3";
@@ -20,9 +20,9 @@ class Processor143 {
   }
 
   /**
-   * 문서 내 모든 텍스트의 명도 대비를 전수 조사합니다.
-   * @returns {Promise<Array>} 진단 결과 리포트 배열
-   */
+  * 문서 내 모든 텍스트의 명도 대비를 전수 조사합니다.
+  * @returns {Promise<Array>} 진단 결과 리포트 배열
+  */
   async scan() {
     const reports = [];
     let passCount = 0; // 통과한 항목의 수를 셉니다.
@@ -32,7 +32,7 @@ class Processor143 {
     for (const el of elements) {
       // 시각적으로 숨겨진 요소는 건너뜀
       if (this.utils.isHidden(el)) continue;
-      
+
       // 텍스트 노드가 없는 요소는 건너뜜 (이미지 등은 별도 처리 필요하지만 여기선 텍스트 위주)
       // 텍스트 노드가 없는 요소는 건너뜀 (이미지 등은 별도 처리 필요하지만 여기선 텍스트 위주)
       const hasText = Array.from(el.childNodes).some(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0);
@@ -84,8 +84,8 @@ class Processor143 {
   }
 
   /**
-   * 요소의 배경색을 부모 요소를 거슬러 올라가며 찾습니다 (투명한 경우 대비)
-   */
+  * 요소의 배경색을 부모 요소를 거슬러 올라가며 찾습니다 (투명한 경우 대비)
+  */
   getRecursiveBackgroundColor(el) {
     let current = el;
     while (current) {

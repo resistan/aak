@@ -1,16 +1,16 @@
 /**
- * ABT Processor 2.4.1 (Bypass Blocks)
- * 
- * KWCAG 2.2 지침 2.4.1 반복 영역 건너뛰기
- * 페이지 상단에는 본문으로 바로 이동할 수 있는 건너뛰기 링크(Skip Navigation)를 제공해야 합니다.
- * 
- * [진단 범위]
- * - 페이지 최상단 링크 요소
- * 
- * [주요 로직]
- * - 본문 바로가기 탐지: '본문', 'main', 'skip' 등의 키워드가 포함된 최상단 링크 확인
- * - 타겟 유효성: 링크의 href가 가리키는 ID 요소가 실제로 존재하고 포커스 가능한지 검증
- */
+* ABT Processor 2.4.1 (Bypass Blocks)
+*
+* KWCAG 2.2 지침 2.4.1 반복 영역 건너뛰기
+* 페이지 상단에는 본문으로 바로 이동할 수 있는 건너뛰기 링크(Skip Navigation)를 제공해야 합니다.
+*
+* [진단 범위]
+* - 페이지 최상단 링크 요소
+*
+* [주요 로직]
+* - 본문 바로가기 탐지: '본문', 'main', 'skip' 등의 키워드가 포함된 최상단 링크 확인
+* - 타겟 유효성: 링크의 href가 가리키는 ID 요소가 실제로 존재하고 포커스 가능한지 검증
+*/
 class Processor241 {
   constructor() {
     this.id = "2.4.1";
@@ -20,12 +20,12 @@ class Processor241 {
   async scan() {
     const reports = [];
     const skipLinks = document.querySelectorAll('a[href^="#"]');
-    
+
     // Check if there's any skip link as one of the very first focusable elements
     const allFocusable = Array.from(document.querySelectorAll('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(el => !this.utils.isHidden(el));
-    
+
     const validSkipLinks = [];
-    
+
     for (let i = 0; i < Math.min(skipLinks.length, 5); i++) {
       const link = skipLinks[i];
       if (allFocusable.indexOf(link) < 5) {
@@ -40,14 +40,14 @@ class Processor241 {
         reports.push(this.analyze(link));
       }
     }
-    
+
     return reports;
   }
 
   analyze(el) {
     const targetId = el.getAttribute('href').substring(1);
     const targetEl = document.getElementById(targetId);
-    
+
     let status = "적절";
     let message = "건너뛰기 링크가 적절히 제공되었습니다.";
     const rules = [];

@@ -1,17 +1,17 @@
 /**
- * ABT Processor 3.3.4 (Redundant Entry)
- * 
- * KWCAG 2.2 지침 3.3.4 반복 입력 정보
- * 동일한 프로세스 내에서 이미 입력한 정보를 다시 요구할 경우, 자동 입력 또는 선택 기능을 제공해야 합니다.
- * 
- * [진단 범위]
- * - 개인정보 및 배송지 관련 입력 필드 (이름, 주소, 연락처 등)
- * - '이전과 동일' 체크박스
- * 
- * [주요 로직]
- * - 반복 입력 필드 식별: name, id 속성 키워드 분석을 통해 사용자 정보를 묻는 필드 탐지
- * - 자동 입력 수단 검증: autocomplete 속성 부재 또는 '동일 옵션' 체크박스 유무를 확인하여 사용자 수고를 더는지 진단
- */
+* ABT Processor 3.3.4 (Redundant Entry)
+*
+* KWCAG 2.2 지침 3.3.4 반복 입력 정보
+* 동일한 프로세스 내에서 이미 입력한 정보를 다시 요구할 경우, 자동 입력 또는 선택 기능을 제공해야 합니다.
+*
+* [진단 범위]
+* - 개인정보 및 배송지 관련 입력 필드 (이름, 주소, 연락처 등)
+* - '이전과 동일' 체크박스
+*
+* [주요 로직]
+* - 반복 입력 필드 식별: name, id 속성 키워드 분석을 통해 사용자 정보를 묻는 필드 탐지
+* - 자동 입력 수단 검증: autocomplete 속성 부재 또는 '동일 옵션' 체크박스 유무를 확인하여 사용자 수고를 더는지 진단
+*/
 class Processor334 {
   constructor() {
     this.id = "3.3.4";
@@ -19,23 +19,23 @@ class Processor334 {
   }
 
   /**
-   * 동일 프로세스 내 중복 입력 요구 여부를 진단합니다.
-   * @returns {Promise<Array>} 진단 결과 리포트 배열
-   */
+  * 동일 프로세스 내 중복 입력 요구 여부를 진단합니다.
+  * @returns {Promise<Array>} 진단 결과 리포트 배열
+  */
   async scan() {
     const reports = [];
-    
+
     // 1. 페이지 내 주요 개인정보/배송지 관련 입력 필드 (반복 입력이 잦은 필드) 탐지
     // name이나 id 속성에 특정 키워드가 들어간 요소들
     const redundantKeywords = ['name', '이름', 'email', '이메일', 'phone', 'tel', '전화', 'address', '주소', 'zip', '우편번호'];
     const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea');
-    
+
     let suspectInputs = [];
     for (const input of inputs) {
       if (this.utils.isHidden(input)) continue;
       const nameAttr = (input.getAttribute('name') || "").toLowerCase();
       const idAttr = (input.getAttribute('id') || "").toLowerCase();
-      
+
       if (redundantKeywords.some(kw => nameAttr.includes(kw) || idAttr.includes(kw))) {
         suspectInputs.push(input);
       }
@@ -55,7 +55,7 @@ class Processor334 {
     if (suspectInputs.length > 0) {
       // 반복 가능 필드가 발견되었을 때, autocomplete 속성이 누락되었는지 확인
       const missingAutocomplete = suspectInputs.filter(el => !el.hasAttribute('autocomplete') || el.getAttribute('autocomplete') === 'off');
-      
+
       if (missingAutocomplete.length > 0 && !hasSameAsCheckbox) {
         reports.push({
           guideline_id: this.id,

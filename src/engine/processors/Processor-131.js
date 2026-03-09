@@ -1,18 +1,18 @@
 /**
- * ABT Processor 1.3.1 (Info and Relationships - Tables)
- * 
- * KWCAG 2.2 지침 1.3.1 표의 구성
- * 표는 내용과 구조를 이해할 수 있도록 제목 셀과 내용 셀을 구분하고 요약을 제공해야 합니다.
- * 
- * [진단 범위]
- * - 모든 <table> 요소
- * 
- * [주요 로직]
- * - 레이아웃 표 제외: <table> 내에 <th>가 하나도 없으면 디자인용 표로 간주하여 필터링
- * - 제목 셀(<th>) 검사: <th> 부재 시 오류 판정
- * - 캡션(<caption>) 검사: <caption> 또는 aria-describedby 부재 시 오류 판정
- * - 데이터 연관성: scope 속성 사용을 권장하는 수정 권고 로직 포함
- */
+* ABT Processor 1.3.1 (Info and Relationships - Tables)
+*
+* KWCAG 2.2 지침 1.3.1 표의 구성
+* 표는 내용과 구조를 이해할 수 있도록 제목 셀과 내용 셀을 구분하고 요약을 제공해야 합니다.
+*
+* [진단 범위]
+* - 모든 <table> 요소
+*
+* [주요 로직]
+* - 레이아웃 표 제외: <table> 내에 <th>가 하나도 없으면 디자인용 표로 간주하여 필터링
+* - 제목 셀(<th>) 검사: <th> 부재 시 오류 판정
+* - 캡션(<caption>) 검사: <caption> 또는 aria-describedby 부재 시 오류 판정
+* - 데이터 연관성: scope 속성 사용을 권장하는 수정 권고 로직 포함
+*/
 class Processor131 {
   constructor() {
     this.id = "1.3.1";
@@ -31,7 +31,7 @@ class Processor131 {
         console.log(`ABT: Skipping layout table (role="${role}"):`, this.utils.getSelector(table));
         continue;
       }
-      
+
       // isHidden이 너무 강력할 수 있으므로 로그 추가 및 조건 완화 고려
       if (this.utils.isHidden(table)) {
         const rect = table.getBoundingClientRect();
@@ -51,10 +51,10 @@ class Processor131 {
     // [1] 캡션 및 제목 분석 - 중첩된 표의 캡션이 섞이지 않도록 처리
     const allCaptions = Array.from(table.querySelectorAll('caption'));
     const captionEl = allCaptions.find(c => c.closest('table') === table);
-    
+
     const ariaLabel = table.getAttribute('aria-label');
     const ariaLabelledBy = table.getAttribute('aria-labelledby');
-    
+
     let hasCaption = !!(captionEl && captionEl.textContent.trim().length > 0);
     let captionText = hasCaption ? captionEl.textContent.trim() : "";
 
@@ -72,13 +72,13 @@ class Processor131 {
     // [2] 제목 셀(th) 분석 - 중첩된 표의 셀은 정확히 필터링
     const allCells = table.querySelectorAll('th, [role="columnheader"], [role="rowheader"]');
     const directHeaders = Array.from(allCells).filter(cell => cell.closest('table') === table);
-    
+
     const hasScope = directHeaders.some(th => th.hasAttribute('scope'));
     const summary = table.getAttribute('summary');
-    
+
     // [3] HTML5 여부 판단
     const isHTML5 = (document.doctype?.publicId === "" || !document.doctype);
-    
+
     let status = "적절";
     let message = "표의 구조가 적절하게 구성되었습니다.";
     const rules = [];

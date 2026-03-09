@@ -1,18 +1,18 @@
 /**
- * ABT Processor 2.2.1 (Adjustable Timing)
- * 
- * KWCAG 2.2 지침 2.2.1 응답 시간 조절
- * 시간 제한이 있는 콘텐츠는 사용자가 그 시간을 연장하거나 정지할 수 있어야 합니다.
- * 
- * [진단 범위]
- * - <meta http-equiv="refresh"> 태그
- * - JavaScript 기반의 세션 만료, 팝업 자동 닫힘 (수동 검토 유도)
- * 
- * [주요 로직]
- * - 메타 태그 분석: <meta>를 통한 자동 새로고침이나 리다이렉트가 설정된 경우 즉시 탐지
- * - 제한 시간 임계값: 20시간(72,000초) 미만의 설정이 있고 0초가 아닌 경우 사용자 제어권 침해로 판단
- * - 수동 검증 가이드: 스크립트 기반의 동적 시간 제한 요소를 찾기 위한 안내 제공
- */
+* ABT Processor 2.2.1 (Adjustable Timing)
+*
+* KWCAG 2.2 지침 2.2.1 응답 시간 조절
+* 시간 제한이 있는 콘텐츠는 사용자가 그 시간을 연장하거나 정지할 수 있어야 합니다.
+*
+* [진단 범위]
+* - <meta http-equiv="refresh"> 태그
+* - JavaScript 기반의 세션 만료, 팝업 자동 닫힘 (수동 검토 유도)
+*
+* [주요 로직]
+* - 메타 태그 분석: <meta>를 통한 자동 새로고침이나 리다이렉트가 설정된 경우 즉시 탐지
+* - 제한 시간 임계값: 20시간(72,000초) 미만의 설정이 있고 0초가 아닌 경우 사용자 제어권 침해로 판단
+* - 수동 검증 가이드: 스크립트 기반의 동적 시간 제한 요소를 찾기 위한 안내 제공
+*/
 class Processor221 {
   constructor() {
     this.id = "2.2.1";
@@ -20,7 +20,7 @@ class Processor221 {
   }
 
   async scan() {
-    // This is primarily a manual check. 
+    // This is primarily a manual check.
     // We can look for meta refresh as an antipattern for forced timing.
     const reports = [];
     const metaRefresh = document.querySelector('meta[http-equiv="refresh"]');

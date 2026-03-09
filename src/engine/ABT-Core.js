@@ -1,7 +1,7 @@
 /**
- * ABT Core Engine
- * 지침별 프로세서들을 등록하고 통합 진단을 수행하는 중앙 컨트롤러
- */
+* ABT Core Engine
+* 지침별 프로세서들을 등록하고 통합 진단을 수행하는 중앙 컨트롤러
+*/
 class ABTCore {
   constructor() {
     this.processors = new Map();
@@ -14,8 +14,8 @@ class ABTCore {
   }
 
   /**
-   * 진단 기준 데이터를 로드합니다.
-   */
+  * 진단 기준 데이터를 로드합니다.
+  */
   async loadStandards() {
     try {
       // 확장 프로그램 내 리소스 경로에서 로드 (Vite/Manifest 환경 고려)
@@ -28,10 +28,10 @@ class ABTCore {
   }
 
   /**
-   * 새로운 프로세서를 등록합니다.
-   * @param {string} id - 지침 번호 (예: '1.1.1')
-   * @param {object} processor - scan() 메서드를 가진 프로세서 객체
-   */
+  * 새로운 프로세서를 등록합니다.
+  * @param {string} id - 지침 번호 (예: '1.1.1')
+  * @param {object} processor - scan() 메서드를 가진 프로세서 객체
+  */
   registerProcessor(id, processor) {
     if (!/^[0-9]\.[0-9]\.[0-9]$/.test(id)) {
       console.warn(`ABT: Blocked registration of legacy processor [${id}].`);
@@ -42,8 +42,8 @@ class ABTCore {
   }
 
   /**
-   * 등록된 모든 프로세서를 실행하여 통합 진단을 수행합니다.
-   */
+  * 등록된 모든 프로세서를 실행하여 통합 진단을 수행합니다.
+  */
   async runFullAudit() {
     if (!this.connector || !this.connector.isConnected) {
       console.warn("ABT: Desktop 앱과 연결되어 있지 않습니다.");
@@ -51,7 +51,7 @@ class ABTCore {
 
     console.log("ABT: Starting Full Audit...");
     let totalIssues = 0;
-    
+
     const pageInfo = {
       url: window.location.href || "Unknown URL",
       pageTitle: document.title.trim() || window.location.hostname || "Untitled Page",
@@ -66,47 +66,47 @@ class ABTCore {
           type: 'SCAN_PROGRESS',
           guideline_id: id
         });
-        
+
         console.log(`ABT: Running Processor [${id}]...`);
         const reports = await processor.scan();
         console.log(`ABT: Processor [${id}] scanned, found ${reports?.length || 0} items.`);
-        
+
         if (reports && reports.length > 0) {
           const batch = reports
-            .filter(report => !!report)
-            .map(report => {
-              report.guideline_id = id;
-              report.pageInfo = { ...pageInfo };
-              
-              // [매핑 로직 추가] 표준 데이터 결합
-              if (this.standards && this.standards.items[id]) {
-                const item = this.standards.items[id];
-                report.guideline_info = {
-                  name: item.name,
-                  principle: this.standards.principles ? this.standards.principles[item.principle_id] : item.principle_id,
-                  compliance_criteria: item.compliance_criteria,
-                  detailed_descriptions: item.detailed_descriptions
-                };
+          .filter(report => !!report)
+          .map(report => {
+            report.guideline_id = id;
+            report.pageInfo = { ...pageInfo };
 
-                // 오류 코드 매핑 (예: Rule 1.1 -> 1-1)
-                if (report.result.rules && report.result.rules.length > 0) {
-                  report.result.detailed_errors = report.result.rules.map(rule => {
-                    const match = rule.match(/Rule\s+(\d+\.\d+)/i);
-                    if (match) {
-                      const errorCode = match[1].replace('.', '-');
-                      return {
-                        code: errorCode,
-                        description: item.error_types[errorCode] || "상세 설명 없음"
-                      };
-                    }
-                    return { code: rule, description: "규칙 설명 없음" };
-                  });
-                }
+            // [매핑 로직 추가] 표준 데이터 결합
+            if (this.standards && this.standards.items[id]) {
+              const item = this.standards.items[id];
+              report.guideline_info = {
+                name: item.name,
+                principle: this.standards.principles ? this.standards.principles[item.principle_id] : item.principle_id,
+                compliance_criteria: item.compliance_criteria,
+                detailed_descriptions: item.detailed_descriptions
+              };
+
+              // 오류 코드 매핑 (예: Rule 1.1 -> 1-1)
+              if (report.result.rules && report.result.rules.length > 0) {
+                report.result.detailed_errors = report.result.rules.map(rule => {
+                  const match = rule.match(/Rule\s+(\d+\.\d+)/i);
+                  if (match) {
+                    const errorCode = match[1].replace('.', '-');
+                    return {
+                      code: errorCode,
+                      description: item.error_types[errorCode] || "상세 설명 없음"
+                    };
+                  }
+                  return { code: rule, description: "규칙 설명 없음" };
+                });
               }
+            }
 
-              return report;
-            });
-          
+            return report;
+          });
+
           if (batch.length > 0) {
             this.connector.sendBatch(batch);
             totalIssues += batch.length;
@@ -127,8 +127,8 @@ class ABTCore {
   }
 
   /**
-   * 특정 요소를 찾아 화면에 표시하고 고해상도 스포트라이트로 강조합니다.
-   */
+  * 특정 요소를 찾아 화면에 표시하고 고해상도 스포트라이트로 강조합니다.
+  */
   highlightElement(selector) {
     try {
       if (!selector || selector === 'outline' || selector === 'document' || selector === 'body') {
@@ -138,7 +138,7 @@ class ABTCore {
 
       // 1. 요소 탐색 (기본 선택자 -> 정밀 구조 폴백)
       let el = document.querySelector(selector);
-      
+
       if (!el) {
         console.warn(`ABT: Selector failed: ${selector}. Trying structure fallback...`);
         try {
@@ -165,12 +165,12 @@ class ABTCore {
       // 2. 가려짐 방지 정밀 스크롤
       const rect = el.getBoundingClientRect();
       const absoluteTop = rect.top + window.pageYOffset;
-      
+
       let headerOffset = 0;
       const fixies = Array.from(document.querySelectorAll('*')).filter(n => {
         const s = window.getComputedStyle(n);
-        return (s.position === 'fixed' || s.position === 'sticky') && 
-               parseInt(s.top) <= 0 && n.offsetHeight > 0 && n.offsetHeight < window.innerHeight / 3;
+        return (s.position === 'fixed' || s.position === 'sticky') &&
+        parseInt(s.top) <= 0 && n.offsetHeight > 0 && n.offsetHeight < window.innerHeight / 3;
       });
       if (fixies.length > 0) headerOffset = Math.max(...fixies.map(n => n.offsetHeight));
 
@@ -197,7 +197,7 @@ class ABTCore {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('width', '100%');
       svg.setAttribute('height', '100%');
-      
+
       const maskId = 'abt-mask-' + Math.random().toString(36).substr(2, 9);
       svg.innerHTML = `
         <defs>
@@ -226,7 +226,7 @@ class ABTCore {
           x: r.left - p, y: r.top - p,
           width: r.width + (p * 2), height: r.height + (p * 2)
         };
-        
+
         [hole, focusRect].forEach(target => {
           for (let k in attrs) target.setAttribute(k, attrs[k]);
         });
@@ -249,20 +249,20 @@ class ABTCore {
     }
   }
   /**
-   * 이미지를 숨기고 대체 텍스트(alt)를 그 자리에 오버레이하여 시각적으로 표시합니다. (1.1.1 지침 검수용)
-   * @param {boolean} enable - true면 이미지 끄기 및 alt 텍스트 표시, false면 복구
-   */
+  * 이미지를 숨기고 대체 텍스트(alt)를 그 자리에 오버레이하여 시각적으로 표시합니다. (1.1.1 지침 검수용)
+  * @param {boolean} enable - true면 이미지 끄기 및 alt 텍스트 표시, false면 복구
+  */
   toggleImageAltView(enable) {
     try {
       const OVERLAY_CLASS = 'abt-alt-overlay-element';
-      
+
       if (enable) {
         // 1. 기존 오버레이가 있다면 제거 (중복 방지)
         document.querySelectorAll(`.${OVERLAY_CLASS}`).forEach(el => el.remove());
-        
+
         // 2. 모든 이미지 관련 요소 수집
         const imgElements = document.querySelectorAll('img, [role="img"], svg');
-        
+
         imgElements.forEach(img => {
           // 이미지 원본 투명처리
           if (!img.dataset.originalOpacity) {
@@ -270,7 +270,7 @@ class ABTCore {
           }
           img.style.opacity = '0.1'; // 완전히 가리지 않고 형태만 어렴풋이 남김
           img.style.filter = 'grayscale(100%)';
-          
+
           // 대체 텍스트 추출
           let altText = img.getAttribute('alt') || img.getAttribute('aria-label') || img.getAttribute('title') || '';
           if (img.tagName.toLowerCase() === 'svg') {
@@ -282,7 +282,7 @@ class ABTCore {
           const overlay = document.createElement('div');
           overlay.className = OVERLAY_CLASS;
           overlay.textContent = altText ? `[ALT: ${altText}]` : `[ALT 없음]`;
-          
+
           // 스타일링
           Object.assign(overlay.style, {
             position: 'absolute',
@@ -327,9 +327,9 @@ class ABTCore {
   }
 
   /**
-   * 모든 CSS 스타일시트를 비활성화하거나 활성화하여 선형 구조를 확인합니다. (1.3.2 지침 검수용)
-   * @param {boolean} enable - true면 선형화(CSS 끔), false면 복구(CSS 켬)
-   */
+  * 모든 CSS 스타일시트를 비활성화하거나 활성화하여 선형 구조를 확인합니다. (1.3.2 지침 검수용)
+  * @param {boolean} enable - true면 선형화(CSS 끔), false면 복구(CSS 켬)
+  */
   toggleLinearView(enable) {
     try {
       Array.from(document.styleSheets).forEach(ss => {
@@ -343,16 +343,16 @@ class ABTCore {
     }
   }
   /**
-   * 초점 이동 경로 및 순서 시각화 기능을 토글합니다.
-   * 활성화 시 자동으로 페이지의 전체 초점 순서를 스캔하여 시각화합니다.
-   */
+  * 초점 이동 경로 및 순서 시각화 기능을 토글합니다.
+  * 활성화 시 자동으로 페이지의 전체 초점 순서를 스캔하여 시각화합니다.
+  */
   toggleFocusTracking(enable) {
     this.isFocusTracking = !!enable;
-    
+
     if (this.isFocusTracking) {
       this.focusPath = [];
       this._setupFocusListeners();
-      
+
       // 실시간 위치 동기화를 위한 이벤트 등록
       this._syncHandler = () => this._renderFocusPath();
       window.addEventListener('scroll', this._syncHandler, { passive: true });
@@ -360,7 +360,7 @@ class ABTCore {
 
       // 기능을 켜는 순간 전체 경로 자동 시각화 실행
       this.visualizeFullFocusOrder();
-      
+
       console.log("ABT: Focus Order Visualization Enabled");
     } else {
       this._removeFocusListeners();
@@ -374,8 +374,8 @@ class ABTCore {
   }
 
   /**
-   * 페이지의 모든 초점 가능 요소를 찾아 전체 순서를 즉시 시각화합니다.
-   */
+  * 페이지의 모든 초점 가능 요소를 찾아 전체 순서를 즉시 시각화합니다.
+  */
   visualizeFullFocusOrder() {
     if (!this.isFocusTracking) return;
 
@@ -447,7 +447,7 @@ class ABTCore {
       };
       // 중복 체크: 이미 경로에 포함된 요소인지 확인
       const existingIdx = this.focusPath.findIndex(p => p.selector === info.selector);
-      
+
       if (existingIdx !== -1) {
         // 이미 있는 요소면 강조 박스 위치만 업데이트하고 종료
         this.currentFocusIdx = existingIdx;
@@ -478,7 +478,7 @@ class ABTCore {
   _renderFocusPath() {
     const containerId = 'abt-focus-tracker-overlay';
     let container = document.getElementById(containerId);
-    
+
     if (!container) {
       if (!this.isFocusTracking) return;
       container = document.createElement('div');
@@ -521,7 +521,7 @@ class ABTCore {
         d += ` L ${next.x} ${next.y}`;
       }
       Object.assign(path.style, {
-        fill: 'none', stroke: '#3b82f6', strokeWidth: '3', 
+        fill: 'none', stroke: '#3b82f6', strokeWidth: '3',
         strokeDasharray: '8,4', opacity: '0.6'
       });
       path.setAttribute('d', d);

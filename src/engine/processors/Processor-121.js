@@ -1,16 +1,16 @@
 /**
- * ABT Processor 1.2.1 (Captions - Prerecorded)
- * 
- * KWCAG 2.2 지침 1.2.1 자막 제공
- * 멀티미디어 콘텐츠에는 청각 장애인을 위한 자막, 대본 또는 수어 등의 대체 수단을 제공해야 합니다.
- * 
- * [진단 범위]
- * - <video>, <audio> 요소
- * 
- * [주요 로직]
- * - 트랙 요소 검사: <video> 내부에 <track kind="captions" 또는 "subtitles"> 존재 여부 확인
- * - 자막 파일 링크: <source> 태그와 별도로 자막 리소스가 정상적으로 연결되어 있는지 검증
- */
+* ABT Processor 1.2.1 (Captions - Prerecorded)
+*
+* KWCAG 2.2 지침 1.2.1 자막 제공
+* 멀티미디어 콘텐츠에는 청각 장애인을 위한 자막, 대본 또는 수어 등의 대체 수단을 제공해야 합니다.
+*
+* [진단 범위]
+* - <video>, <audio> 요소
+*
+* [주요 로직]
+* - 트랙 요소 검사: <video> 내부에 <track kind="captions" 또는 "subtitles"> 존재 여부 확인
+* - 자막 파일 링크: <source> 태그와 별도로 자막 리소스가 정상적으로 연결되어 있는지 검증
+*/
 class Processor121 {
   constructor() {
     this.id = "1.2.1";
@@ -34,10 +34,10 @@ class Processor121 {
     const smartContext = this.utils.getSmartContext(el, 150);
     const isMuted = el.muted || el.hasAttribute('muted');
     const isAutoplay = el.autoplay || el.hasAttribute('autoplay');
-    
+
     // 주변에 대본/원고 키워드가 있는지 확인
     const foundKeywords = this.keywords.filter(k => smartContext.toLowerCase().includes(k));
-    
+
     let status = "검토 필요";
     let message = "";
     const rules = [];
@@ -48,7 +48,7 @@ class Processor121 {
         status = "적절";
         message = "소리가 없는 배경 영상으로 판단되어 자막 제공 대상에서 제외되었습니다.";
         rules.push("Rule 1.1 (Background Video)");
-      } 
+      }
       // [케이스 B] 자막 트랙 있음
       else if (hasTrack) {
         status = "검토 필요";

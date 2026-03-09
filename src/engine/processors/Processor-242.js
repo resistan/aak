@@ -1,19 +1,19 @@
 /**
- * ABT Processor 2.4.2 (Page Titled)
- * 
- * KWCAG 2.2 지침 2.4.2 제목 제공
- * 웹 페이지와 각 프레임에는 그 목적을 이해할 수 있는 명확한 제목을 제공해야 합니다.
- * 
- * [진단 범위]
- * - <title> 요소 (Head)
- * - <iframe>, <frame> 요소
- * - <h1> 제목 요소 및 전체 헤딩 구조 (h1~h6)
- * 
- * [주요 로직]
- * - 누락 체크: <title> 또는 프레임의 title 속성이 비어있는 경우 탐지
- * - 의미 없는 제목 필터링: 무의미한 기본값(untitled 등) 사용 여부 검증
- * - 헤딩 아웃라인 분석: 페이지 전체의 제목 계층 구조(h1~h6) 수집 및 단계 건너뛰기 탐지
- */
+* ABT Processor 2.4.2 (Page Titled)
+*
+* KWCAG 2.2 지침 2.4.2 제목 제공
+* 웹 페이지와 각 프레임에는 그 목적을 이해할 수 있는 명확한 제목을 제공해야 합니다.
+*
+* [진단 범위]
+* - <title> 요소 (Head)
+* - <iframe>, <frame> 요소
+* - <h1> 제목 요소 및 전체 헤딩 구조 (h1~h6)
+*
+* [주요 로직]
+* - 누락 체크: <title> 또는 프레임의 title 속성이 비어있는 경우 탐지
+* - 의미 없는 제목 필터링: 무의미한 기본값(untitled 등) 사용 여부 검증
+* - 헤딩 아웃라인 분석: 페이지 전체의 제목 계층 구조(h1~h6) 수집 및 단계 건너뛰기 탐지
+*/
 class Processor242 {
   constructor() {
     this.id = "2.4.2";
@@ -25,9 +25,9 @@ class Processor242 {
   }
 
   /**
-   * 페이지 및 프레임의 제목 제공 여부를 전수 조사합니다.
-   * @returns {Promise<Array>} 진단 결과 리포트 배열
-   */
+  * 페이지 및 프레임의 제목 제공 여부를 전수 조사합니다.
+  * @returns {Promise<Array>} 진단 결과 리포트 배열
+  */
   async scan() {
     const reports = [];
 
@@ -44,7 +44,7 @@ class Processor242 {
     const frames = document.querySelectorAll('iframe, frame');
     for (const frame of frames) {
       const title = frame.getAttribute('title') ? frame.getAttribute('title').trim() : "";
-      
+
       if (!title) {
         reports.push(this.createReport(frame, "오류", "프레임(iframe)의 title 속성이 누락되었습니다."));
       } else if (this.meaninglessTitles.includes(title.toLowerCase())) {
@@ -69,7 +69,7 @@ class Processor242 {
         text: h.innerText.trim(),
         selector: this.utils.getSelector(h)
       }));
-      
+
       reports.push({
         guideline_id: this.id,
         elementInfo: { tagName: 'BODY', selector: 'outline' },

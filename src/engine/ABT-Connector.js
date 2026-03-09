@@ -1,6 +1,6 @@
 /**
- * ABT-Connector: Browser to Extension Bridge
- */
+* ABT-Connector: Browser to Extension Bridge
+*/
 class ABTConnector {
   constructor() {
     this.isConnected = true; // Chrome runtime is always available in content script
@@ -9,41 +9,41 @@ class ABTConnector {
 
   setupListeners() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-try {
-if (message.type === 'locate-element' && window.ABTCore) {
-window.ABTCore.highlightElement(message.selector);
-sendResponse({ status: 'success' });
-} else if (message.type === 'RUN_AUDIT' && window.ABTQuickScan) {
-console.log("ABT: Audit triggered via Extension UI");
-window.ABTQuickScan();
-sendResponse({ status: 'started' });
-} else if (message.type === 'TOGGLE_CSS' && window.ABTCore) {
-window.ABTCore.toggleLinearView(message.enable);
-sendResponse({ status: 'success', isLinear: message.enable });
-} else if (message.type === 'TOGGLE_IMAGE_ALT' && window.ABTCore) {
-window.ABTCore.toggleImageAltView(message.enable);
-sendResponse({ status: 'success', isImageAlt: message.enable });
-} else if (message.type === 'TOGGLE_FOCUS_TRACKING' && window.ABTCore) {
-window.ABTCore.toggleFocusTracking(message.enable);
-sendResponse({ status: 'success', isFocusTracking: message.enable });
-} else if (message.type === 'RESET_FOCUS_TRACKING' && window.ABTCore) {
-window.ABTCore.resetFocusTracking();
+      try {
+        if (message.type === 'locate-element' && window.ABTCore) {
+          window.ABTCore.highlightElement(message.selector);
+          sendResponse({ status: 'success' });
+        } else if (message.type === 'RUN_AUDIT' && window.ABTQuickScan) {
+          console.log("ABT: Audit triggered via Extension UI");
+          window.ABTQuickScan();
+          sendResponse({ status: 'started' });
+        } else if (message.type === 'TOGGLE_CSS' && window.ABTCore) {
+          window.ABTCore.toggleLinearView(message.enable);
+          sendResponse({ status: 'success', isLinear: message.enable });
+        } else if (message.type === 'TOGGLE_IMAGE_ALT' && window.ABTCore) {
+          window.ABTCore.toggleImageAltView(message.enable);
+          sendResponse({ status: 'success', isImageAlt: message.enable });
+        } else if (message.type === 'TOGGLE_FOCUS_TRACKING' && window.ABTCore) {
+          window.ABTCore.toggleFocusTracking(message.enable);
+          sendResponse({ status: 'success', isFocusTracking: message.enable });
+        } else if (message.type === 'RESET_FOCUS_TRACKING' && window.ABTCore) {
+          window.ABTCore.resetFocusTracking();
           sendResponse({ status: 'success' });
         } else if (message.type === 'VISUALIZE_FULL_FOCUS_ORDER' && window.ABTCore) {
           window.ABTCore.visualizeFullFocusOrder();
           sendResponse({ status: 'success' });
         }
-} catch (e) {
-console.warn("ABT: Failed to handle message from extension", e);
-sendResponse({ status: 'error', message: e.message });
-}
+      } catch (e) {
+        console.warn("ABT: Failed to handle message from extension", e);
+        sendResponse({ status: 'error', message: e.message });
+      }
       return true; // Keep channel open for async response if needed
     });
   }
 
   /**
-   * 진단 데이터를 확장 프로그램(Background/Sidepanel)으로 전송합니다.
-   */
+  * 진단 데이터를 확장 프로그램(Background/Sidepanel)으로 전송합니다.
+  */
   send(data) {
     try {
       // 이미 type이 정의된 제어 메시지(SCAN_FINISHED 등)는 그대로 전송,
@@ -60,8 +60,8 @@ sendResponse({ status: 'error', message: e.message });
     }
   }
   /**
-   * 진단 데이터를 배치(Batch) 단위로 확장 프로그램으로 전송합니다.
-   */
+  * 진단 데이터를 배치(Batch) 단위로 확장 프로그램으로 전송합니다.
+  */
   sendBatch(items) {
     if (!items || items.length === 0) return true;
     try {

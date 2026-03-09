@@ -1,19 +1,19 @@
 /**
- * ABT Processor 1.1.1 (Non-text Content)
- * 
- * KWCAG 2.2 지침 1.1.1 적절한 대체 텍스트 제공
- * 시각적 정보를 텍스트가 아닌 형태로 제공할 때, 그와 동등한 정보를 전달하는 텍스트를 제공해야 합니다.
- * 
- * [진단 범위]
- * 1. <img>, <area>, <input type="image">, <svg>, [role="img"]
- * 2. 배경 이미지 (background-image)
- * 
- * [주요 로직]
- * - [단계 A] 누락 오류: 의미 있는 요소에 alt, aria-label 등이 없는 경우
- * - [단계 B] 기능형 검사: 클릭 가능한 요소 내의 이미지가 목적을 설명하는지
- * - [단계 C] 불필요 단어: '사진', '이미지' 등 의미 중복 단어 필터링
- * - [단계 D] 문맥 유사도: 주변 텍스트와 겹쳐서 발생하는 스크린 리더 중복 낭독 방지
- */
+* ABT Processor 1.1.1 (Non-text Content)
+*
+* KWCAG 2.2 지침 1.1.1 적절한 대체 텍스트 제공
+* 시각적 정보를 텍스트가 아닌 형태로 제공할 때, 그와 동등한 정보를 전달하는 텍스트를 제공해야 합니다.
+*
+* [진단 범위]
+* 1. <img>, <area>, <input type="image">, <svg>, [role="img"]
+* 2. 배경 이미지 (background-image)
+*
+* [주요 로직]
+* - [단계 A] 누락 오류: 의미 있는 요소에 alt, aria-label 등이 없는 경우
+* - [단계 B] 기능형 검사: 클릭 가능한 요소 내의 이미지가 목적을 설명하는지
+* - [단계 C] 불필요 단어: '사진', '이미지' 등 의미 중복 단어 필터링
+* - [단계 D] 문맥 유사도: 주변 텍스트와 겹쳐서 발생하는 스크린 리더 중복 낭독 방지
+*/
 class Processor111 {
   constructor() {
     this.id = "1.1.1";
@@ -22,9 +22,9 @@ class Processor111 {
   }
 
   /**
-   * 현재 문서의 모든 비텍스트 콘텐츠를 수집하고 정밀 진단을 수행합니다.
-   * @returns {Promise<Array>} 진단 결과 리포트 배열
-   */
+  * 현재 문서의 모든 비텍스트 콘텐츠를 수집하고 정밀 진단을 수행합니다.
+  * @returns {Promise<Array>} 진단 결과 리포트 배열
+  */
   async scan() {
     const reports = [];
     // 1. 일반 이미지 요소 수집
@@ -52,7 +52,7 @@ class Processor111 {
     const smartContext = this.utils.getSmartContext(el, 50);
     const functionalContext = this.getFunctionalContext(el);
     let accessibleName = (el.getAttribute("aria-label") || el.title || "").trim();
-    
+
     // IR 기법으로 숨겨진 텍스트가 있는지 확인
     if (!accessibleName && this.utils.isImageReplacement(el)) {
       accessibleName = el.innerText.trim();
@@ -83,7 +83,7 @@ class Processor111 {
       const titleEl = el.querySelector("title");
       accessibleName = (el.getAttribute("aria-label") || (titleEl ? titleEl.textContent : "")).trim();
       isDecorative = el.getAttribute("aria-hidden") === "true" || el.getAttribute("focusable") === "false";
-      
+
       // SVG 데이터 추출 (미리보기용)
       try {
         const svgClone = el.cloneNode(true);
@@ -102,7 +102,7 @@ class Processor111 {
       const altAttr = el.getAttribute("alt");
       accessibleName = (altAttr || el.getAttribute("aria-label") || "").trim();
       src = el.src;
-      
+
       if (altAttr === "" || ["presentation", "none"].includes(el.getAttribute("role"))) {
         isDecorative = true;
       }
@@ -110,7 +110,7 @@ class Processor111 {
 
     const smartContext = this.utils.getSmartContext(el, 50);
     const functionalContext = this.getFunctionalContext(el);
-    
+
     let status = "적절";
     let message = "적절한 대체 텍스트가 제공되었습니다.";
     const rules = [];
