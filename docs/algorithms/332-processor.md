@@ -21,21 +21,33 @@
 
 모든 대상 입력 서식에 대해 다음 우선순위에 따라 레이블(Accessible Name)의 존재를 검사한다.
 
-### [단계 A] 명시적 <label> 연결 검사 (가장 권장됨)
+### [검사 1] 명시적 <label> 연결 검사 (가장 권장됨)
 - 대상 요소의 `id` 속성값과 동일한 `for` 속성을 가진 `<label>` 태그가 존재하는가?
 - 혹은 대상 요소가 `<label>` 태그의 자식 요소로 직접 감싸져 있는가(Implicit connection)?
-- 결과: 연결된 `<label>`이 존재하고 내부에 유효한 텍스트가 있다면 **[적절(Pass)]** 판정.
+- 결과: 연결된 `<label>`이 존재하고 내부에 유효한 텍스트가 있다면 **[적절]** 판정.
+- **Rule 3.3.2 (Empty explicit label):** `<label>` 요소가 연결되어 있으나 텍스트 내용이 비어있는 경우.
+  - 결과: **[오류]**
 
-### [단계 B] ARIA 속성을 통한 대체 레이블 검사
+### [검사 2] ARIA 속성을 통한 대체 레이블 검사
 - 명시적 `<label>`이 없는 경우, 다음 속성 중 하나로 대체 제공되었는가?
-  1. `aria-labelledby`를 통한 텍스트 노드 연결 (**적절**)
-2. `aria-label`을 통한 텍스트 직접 삽입 (**적절**)
-3. `title` 속성을 통한 텍스트 제공 (**수정 권고**) - HTML5 스펙상 유효한 대체 레이블이나 시각적 레이블 제공 권장.
+  1. `aria-label`을 통한 텍스트 직접 삽입 (**적절**)
+  2. `aria-labelledby`를 통한 텍스트 노드 연결 (**적절**)
+- **Rule 3.3.2 (Invalid aria-labelledby):** `aria-labelledby` 대상이 없거나 내용이 비어있는 경우.
+  - 결과: **[오류]**
+- **Rule 3.3.2 (Title used as label):** `title` 속성을 통한 텍스트 제공.
+  - 결과: **[수정 권고]**
+  - 가이드: "title 속성으로 레이블을 제공했습니다. 시각적 label 태그나 aria-label 사용을 권장합니다."
 
-### [단계 C] Placeholder 의존성 검사 (오류 분류)
-- `<label>`, `title`, `aria` 속성들이 모두 없고, 오직 `placeholder` 속성만 제공되었는가?
-- KWCAG 2.2 가이드라인 및 웹 접근성 표준 상, `placeholder`는 입력 힌트일 뿐 레이블을 대체할 수 없다.
-- 결과: 레이블 제공 없이 `placeholder`만 존재하면 **[오류]**.
+### [검사 3] Placeholder 의존성 검사
+- **Rule 3.3.2 (Placeholder is not a label):** `<label>`, `title`, `aria` 속성들이 모두 없고, 오직 `placeholder` 속성만 제공된 경우.
+  - KWCAG 2.2 가이드라인 및 웹 접근성 표준 상, `placeholder`는 입력 힌트일 뿐 레이블을 대체할 수 없음.
+  - 결과: **[오류]**
+  - 가이드: "레이블 없이 placeholder 속성만 제공되었습니다. placeholder는 힌트일 뿐 레이블을 대체할 수 없으므로 <label> 또는 title, aria-label을 추가하세요."
+
+### [검사 4] 레이블 완전 누락 검사
+- **Rule 3.3.2 (Missing Label):** 입력 서식에 `label`, `title`, `aria-label`, `aria-labelledby` 중 그 어떤 속성도 제공되지 않은 경우.
+  - 결과: **[오류]**
+  - 가이드: "입력 서식에 레이블(<label>, title, aria-label 등)이 제공되지 않았습니다."
 
 ## 3. 최종 상태 정의 (Final Status)
 1. **오류 (Fail):**
