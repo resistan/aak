@@ -21,7 +21,7 @@ class ABTCore {
       // 확장 프로그램 내 리소스 경로에서 로드 (Vite/Manifest 환경 고려)
       const response = await fetch(chrome.runtime.getURL('src/engine/kwcag-standards.json'));
       this.standards = await response.json();
-      console.log("ABT: KWCAG Standards loaded.", this.standards.version);
+      // console.log("ABT: KWCAG Standards loaded.", this.standards.version);
     } catch (error) {
       console.error("ABT: Failed to load standards JSON. Falling back to basic info.", error);
     }
@@ -38,7 +38,7 @@ class ABTCore {
       return;
     }
     this.processors.set(id, processor);
-    console.log(`ABT: Processor [${id}] registered.`);
+    // console.log(`ABT: Processor [${id}] registered.`);
   }
 
   /**
