@@ -104,6 +104,20 @@ class ABTCore {
               }
             }
 
+            // DOM에서 오프닝 태그 스니펫 추출 (셀렉터로 요소 재조회)
+            const sel = report.elementInfo?.selector;
+            if (
+              sel &&
+              sel !== 'outline' &&
+              sel !== 'body' &&
+              !report.elementInfo.openingTag
+            ) {
+              try {
+                const el = document.querySelector(sel);
+                if (el) report.elementInfo.openingTag = window.ABTUtils.getOpeningTag(el);
+              } catch (e) { /* 셀렉터 매칭 실패 시 무시 */ }
+            }
+
             return report;
           });
 

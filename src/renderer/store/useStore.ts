@@ -76,6 +76,7 @@ export interface ABTItem {
     src?: string;
     alt?: string;
     sourceAttr?: string;
+    openingTag?: string;
   };
   context: {
     smartContext: string;

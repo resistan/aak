@@ -6,10 +6,6 @@
   --bg-secondary: #{$slate-900};
   --bg-hover: #{$slate-800};
   --text-main: #{$slate-200};
-  --text-muted: #{$slate-300};
-  --text-dim: #{$slate-400};
-
-  --text-dim: #{$slate-400};
   --text-muted: #{$slate-400};
   --text-dim: #{$slate-500};
   --border-color: #{$slate-800};
@@ -21,8 +17,6 @@
   --accent-highlight: #{$sky-400};
   --accent-highlight-rgb: 56, 189, 248;
   --card-selected-bg: rgba(37, 99, 235, 0.05);
-
-  --card-selected-bg: rgba(37, 99, 235, 0.05);
   --shadow-color: rgba(0, 0, 0, 0.6);
 }
 
@@ -32,12 +26,8 @@
     --bg-secondary: #ffffff;
     --bg-hover: #{$slate-100};
     --text-main: #{$slate-900};
-    --text-muted: #{$slate-700};
-    --text-dim: #{$slate-600};
-
-    --text-dim: #{$slate-600};
     --text-muted: #{$slate-600};
-    --text-dim: #{$slate-400};
+    --text-dim: #{$slate-500};
     --border-color: #{$slate-200};
     --accent-blue: #{$blue-600};
     --accent-fail: #{$red-700};
@@ -46,8 +36,6 @@
     --accent-review: #{$blue-600};
     --accent-highlight: #{$sky-400};
     --accent-highlight-rgb: 56, 189, 248;
-    --card-selected-bg: rgba(37, 99, 235, 0.05);
-
     --card-selected-bg: rgba(37, 99, 235, 0.05);
     --shadow-color: rgba(0, 0, 0, 0.1);
   }

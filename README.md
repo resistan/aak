@@ -20,6 +20,11 @@
 - **스마트 리포팅**: 검수 내역을 마크다운(Markdown)으로 추출
 - **Hybrid Audit Flow**: 자동 진단이 놓친 정성적 위배 사항을 전문가가 지침별로 직접 추가하여 리포트에 포함 가능
 
+### 0.6.8 변경 내역
+- 해당 URL이 활성화되지 않은 상태에서 기존 결과를 볼 수 없는 문제 수정
+- 검사 결과 목록 중 N/A, 수동 입력, 정보 버튼 명도대비 조정
+- 검출된 항목의 셀렉터 대신 실제 태그 내용 일부를 출력하도록 변경(셀렉터 출력은 fallback)
+
 ## 🛠️ 기술 스택
 - **Core**: React 18, TypeScript, SCSS (Module)
 - **Extension**: Manifest V3, Chrome Side Panel API

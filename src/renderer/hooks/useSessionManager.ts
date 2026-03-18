@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { ABTItem, kwcagHierarchy } from '../store/useStore';
+import { normalizeUrl } from '../utils/format';
 
 export function useSessionManager(items: ABTItem[]) {
 	// State
@@ -133,6 +134,35 @@ export function useSessionManager(items: ABTItem[]) {
 		}
 	}, [items, selectedSessionId]);
 
+	// 세션 선택: 해당 URL 탭이 이미 열려있으면 활성화, 없으면 새 탭으로 열기
+	const handleSelectSession = async (scanId: number) => {
+		const session = sessions.find(s => s.scanId === scanId);
+
+		if (session?.url && typeof chrome !== 'undefined' && chrome.tabs) {
+			try {
+				const allTabs = await chrome.tabs.query({});
+				const matchingTab = allTabs.find(
+					tab => tab.url && normalizeUrl(tab.url) === normalizeUrl(session.url)
+				);
+
+				if (matchingTab?.id) {
+					// 기존 탭 활성화
+					await chrome.tabs.update(matchingTab.id, { active: true });
+					if (matchingTab.windowId) {
+						await chrome.windows.update(matchingTab.windowId, { focused: true });
+					}
+				} else {
+					// 새 탭으로 열기
+					await chrome.tabs.create({ url: session.url });
+				}
+			} catch {
+				// 탭 접근 불가 시 무시
+			}
+		}
+
+		setSelectedSessionId(scanId);
+	};
+
 	return {
 		// State
 		selectedSessionId,
@@ -154,6 +184,7 @@ export function useSessionManager(items: ABTItem[]) {
 		allGroupedItems,
 
 		// Functions
+		handleSelectSession,
 		toggleGroup,
 
 		// Ref

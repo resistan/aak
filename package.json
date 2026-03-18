@@ -1,6 +1,6 @@
 {
   "name": "aak-extension",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "description": "A11Y Assistant for KWCAG",
   "scripts": {
     "dev": "vite",

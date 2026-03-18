@@ -62,6 +62,7 @@ const App = () => {
     filteredItems,
     itemStats,
     allGroupedItems,
+    handleSelectSession,
     toggleGroup,
     collapsedByUser
   } = useSessionManager(items);
@@ -271,7 +272,7 @@ const App = () => {
           isAuditing={isAuditing}
           sessions={sessions}
           onStartAudit={handleStartAudit}
-          onSelectSession={setSelectedSessionId}
+          onSelectSession={handleSelectSession}
           onDeleteSession={handleDeleteSession}
           onClearAll={clearItems}
         />

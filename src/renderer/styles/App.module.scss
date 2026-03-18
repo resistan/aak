@@ -48,7 +48,7 @@
 .iconBtn {
   background: transparent;
   border: none;
-  color: $text-d;
+  color: $text-m;
   cursor: pointer;
   padding: $space-1 $space-2;
   border-radius: 4px;
@@ -351,7 +351,7 @@
   }
 }
 
-.naBadge { font-size: $text-xs; font-weight: 800; padding: 2px $space-2; border-radius: $space-1; background: rgba(148, 163, 184, 0.1); color: $text-d; border: 1px dashed $text-d; cursor: help; }
+.naBadge { font-size: $text-xs; font-weight: 800; padding: 2px $space-2; border-radius: $space-1; background: rgba(148, 163, 184, 0.1); color: $text-m; border: 1px dashed $text-m; cursor: help; }
 
 .groupContent {
   padding: $space-3 $space-4;
@@ -563,6 +563,21 @@
 
     h3 { font-size: $text-sm; font-weight: 700; color: $text; margin: 0 0 $space-1 0; line-height: 1.4; }
     .selector { font-size: $text-xs; color: $text-d; font-family: monospace; }
+    // 실제 마크업 스니펫 표시 (selector 대체)
+    .markupTag {
+      display: block;
+      font-size: $text-xs;
+      font-family: monospace;
+      color: $text-m;
+      background: rgba($accent, 0.06);
+      border: 1px solid rgba($accent, 0.15);
+      border-radius: 4px;
+      padding: 2px $space-2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
     .outlineLabel { font-size: $text-xs; font-weight: 800; color: $accent; background: $bg-p; padding: 2px $space-2; border-radius: 4px; border: 1px solid rgba($accent, 0.3); }
   }
 

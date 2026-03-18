@@ -98,32 +98,24 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 					{/* 메시지 */}
 					<h3 className={isJudged ? styles.judgedTitle : ''}>{item.result?.message}</h3>
 
-					{/* 지침별 추가 정보 */}
-					{!isJudged && (
-						<>
-							{item.guideline_id === '1.1.1' && (
-								<div className={styles.markupSnippet}>
-									&lt;{item.elementInfo.tagName.toLowerCase()} <span className={styles.attrName}>{(item.elementInfo as any).sourceAttr || 'alt'}</span>=<span
-className={styles.attrVal}>"{item.elementInfo.alt || ''}"</span> ... /&gt;
-								</div>
-							)}
-							{item.guideline_id === '1.4.3' && (item.context as any).color && (
-								<div
-									className={styles.contrastPreview}
-									style={{
-										color: (item.context as any).color,
-										backgroundColor: (item.context as any).backgroundColor
-									}}
-								>
-									Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
-								</div>
-							)}
-						</>
+					{/* 명도 대비 미리보기 (1.4.3 전용) */}
+					{!isJudged && item.guideline_id === '1.4.3' && (item.context as any).color && (
+						<div
+							className={styles.contrastPreview}
+							style={{
+								color: (item.context as any).color,
+								backgroundColor: (item.context as any).backgroundColor
+							}}
+						>
+							Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
+						</div>
 					)}
 
-					{/* 셀렉터 */}
+					{/* 마크업 스니펫 또는 셀렉터 */}
 					{item.elementInfo.selector === 'outline' ? (
 						<span className={styles.outlineLabel}>Heading Outline</span>
+					) : item.elementInfo.openingTag ? (
+						<code className={styles.markupTag}>{item.elementInfo.openingTag}</code>
 					) : (
 						<code className={styles.selector}>{item.elementInfo.selector}</code>
 					)}

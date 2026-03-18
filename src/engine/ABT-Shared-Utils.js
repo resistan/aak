@@ -164,6 +164,69 @@ window.ABTUtils = Object.assign(window.ABTUtils || {}, {
   },
 
   /**
+  * 요소의 마크업 스니펫을 생성합니다.
+  * - void 요소(img, input 등): opening tag만 반환
+  * - 텍스트가 있는 요소: <tag attrs>텍스트</tag> 형태로 반환
+  * @param {HTMLElement} el - 대상 요소
+  * @param {number} maxLen - 최대 문자 수 (기본 150)
+  * @returns {string} 예: <button type="submit">로그인</button>
+  */
+  getOpeningTag: function(el, maxLen = 150) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = el.tagName.toLowerCase();
+
+    // void 요소 목록 (닫는 태그 없음)
+    const voidTags = new Set([
+      'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+      'link', 'meta', 'param', 'source', 'track', 'wbr'
+    ]);
+
+    // 접근성·식별에 중요한 속성 우선 순서
+    const priorityAttrs = [
+      'id', 'role', 'type', 'name', 'for', 'href', 'src', 'lang',
+      'aria-label', 'aria-labelledby', 'aria-describedby', 'aria-hidden',
+      'aria-required', 'aria-expanded', 'aria-controls', 'aria-live',
+      'alt', 'title', 'tabindex', 'class'
+    ];
+
+    const parts = [tag];
+    for (const attr of priorityAttrs) {
+      if (!el.hasAttribute(attr)) continue;
+      let val = el.getAttribute(attr);
+
+      // class는 첫 3개 클래스만 표시
+      if (attr === 'class') {
+        const classes = val.trim().split(/\s+/);
+        val = classes.slice(0, 3).join(' ') + (classes.length > 3 ? '…' : '');
+      } else if (val.length > 60) {
+        val = val.substring(0, 57) + '…';
+      }
+
+      parts.push(`${attr}="${val}"`);
+    }
+
+    const openTag = `<${parts.join(' ')}>`;
+
+    // void 요소는 opening tag만 반환
+    if (voidTags.has(tag)) {
+      return openTag.length > maxLen ? openTag.substring(0, maxLen - 2) + '…>' : openTag;
+    }
+
+    // 텍스트 내용이 있으면 <tag>텍스트</tag> 형태로 반환
+    const innerText = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (innerText) {
+      const maxTextLen = Math.max(20, maxLen - openTag.length - tag.length - 3);
+      const text = innerText.length > maxTextLen
+        ? innerText.substring(0, maxTextLen) + '…'
+        : innerText;
+      const full = `${openTag}${text}</${tag}>`;
+      return full.length > maxLen ? full.substring(0, maxLen - 2) + '…' : full;
+    }
+
+    return openTag.length > maxLen ? openTag.substring(0, maxLen - 2) + '…>' : openTag;
+  },
+
+  /**
   * W3C AccName 1.2 기반 Accessible Name 추출 (경량화 버전)
   * 참고: https://www.w3.org/TR/accname-1.2/
   * @param {HTMLElement} el
