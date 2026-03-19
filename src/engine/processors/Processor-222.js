@@ -27,20 +27,14 @@ class Processor222 {
       if (report) reports.push(report);
     }
 
-    // 3. 탐지된 결과가 없는 경우 일반 안내 제공 (참고자료)
+    // 3. 탐지된 결과가 없는 경우 전문가 확인 요청
     if (reports.length === 0) {
-      reports.push({
-        guideline_id: this.id,
-        elementInfo: { tagName: "document", selector: "body" },
-        context: { smartContext: "자동 변경 콘텐츠 검토" },
-        result: {
-          status: "참고자료",
-          message: "페이지 내에 자동으로 재생되거나 갱신되는 콘텐츠(슬라이더, 롤링 배너 등)가 있다면 사용자가 이를 멈출 수 있는 수단이 제공되는지 확인하세요.",
-          rules: ["Rule 222. (General Manual Review)"]
-        },
-        currentStatus: "참고자료",
-        history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: "안내 정보 생성" }]
-      });
+      reports.push(this.createReport(
+        document.body,
+        "검토 필요",
+        "페이지 내에 자동으로 재생되거나 갱신되는 콘텐츠(슬라이더, 롤링 배너 등)가 있는지 확인하세요.",
+        ["Rule 222. (General Manual Review)"]
+      ));
     }
 
     return reports;

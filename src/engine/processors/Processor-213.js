@@ -30,8 +30,8 @@ class Processor213 {
     const reports = [];
 
     for (const el of interactables) {
-      // Inline links inside text blocks are usually exempt
-      if (el.tagName.toLowerCase() === 'a' && window.getComputedStyle(el).display === 'inline') {
+      // 인라인 요소(inline, inline-block, inline-flex 등)는 본문 흐름 내 링크로 간주하여 제외
+      if (window.getComputedStyle(el).display.startsWith('inline')) {
         continue;
       }
 

@@ -57,9 +57,6 @@ class Processor121 {
       }
       // [케이스 C] 자막 트랙 없고 원고 키워드도 없음
       else if (foundKeywords.length === 0) {
-        status = "오류";
-        message = "미디어 콘텐츠에 자막(<track>) 또는 설명 원고가 제공되지 않았습니다. 자막 제공을 요청하세요.";
-        rules.push("Rule 2.2 (Missing Captions)");
         status = "검토 필요";
         message = "미디어 콘텐츠에 자막 트랙(<track>)이 탐지되지 않았습니다. 열린 자막(Open Caption) 제공 여부 또는 별도의 대본 제공 여부를 수동으로 확인하세요.";
         rules.push("Rule 2.2 (Manual Subtitle Review)");

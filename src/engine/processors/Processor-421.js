@@ -31,22 +31,14 @@ class Processor421 {
       reports.push(this.analyze(el));
     }
 
+    // 위젯 미감지 시 전문가 확인 요청 (N/A 대신 검토 필요로 처리)
     if (reports.length === 0) {
       reports.push(this.createReport(
         document.body,
-        "N/A",
-        "페이지 내에 커스텀 ARIA 위젯(role='button' 등)이 발견되지 않았습니다. 일반적인 HTML 문서일 가능성이 높습니다.",
+        "검토 필요",
+        "커스텀 ARIA 위젯이 감지되지 않았습니다. 페이지에 JavaScript로 동작하는 동적 컴포넌트가 있는지 확인하세요.",
         ["Rule 4.2.1 (No Custom Widgets)"],
         "없음"
-      ));
-    } else {
-      // 위젯이 여러 개 발견되었어도, 가장 대표적인 검토 안내 리포트를 추가합니다.
-      reports.push(this.createReport(
-        document.body,
-        "검토 필요",
-        `[수동 검사 안내] 커스텀 ARIA 위젯이 총 ${reports.length}개 발견되었습니다. 이 위젯들이 1) 키보드만으로 조작 가능한지, 2) 상태 변화(aria-expanded, aria-checked 등)가 스크린 리더에 정확히 전달되는지 수동으로 검토하세요.`,
-        ["Rule 4.2.1 (Manual ARIA Review)"],
-        "웹 애플리케이션 종합 검토"
       ));
     }
 

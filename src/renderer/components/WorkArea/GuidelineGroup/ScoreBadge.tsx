@@ -10,10 +10,9 @@ interface ScoreBadgeProps {
 	setGuidelineScore: (scanId: number, gid: string, score: number) => void;
 }
 
-// 전수 조사형 지침 목록
-const EXHAUSTIVE_GIDS = ['1.1.1', '1.3.1', '1.4.3', '2.1.1', '2.1.2', '2.4.1', '2.4.2', '2.4.3', '2.5.3', '3.1.1', '3.3.2'];
-// 수동 검사 배지 스킵 지침
-const SKIP_MANUAL_BADGE_GIDS = ['1.1.1', '3.1.1'];
+// 전수 조사형 지침 목록 (비율 기반 자동 점수 계산)
+// 그 외 지침은 전문가가 직접 점수 입력 (수동 검사 필요)
+const EXHAUSTIVE_GIDS = ['1.1.1', '1.2.1', '1.3.1', '1.4.1', '1.4.2', '1.4.3', '2.1.1', '2.1.2', '2.1.3', '2.2.2', '2.4.1', '2.4.2', '2.4.3', '2.5.3', '3.1.1', '3.2.1', '3.3.1', '3.3.2', '3.3.3', '4.2.1'];
 
 export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 	gid,
@@ -85,8 +84,8 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 		else if (['검토 필요', '수정 권고'].includes(i.currentStatus)) review += weight;
 	});
 
-	// 수동 검사 필요 표시
-	if (fail === 0 && review > 0 && items.some(i => i.currentStatus === '검토 필요') && !SKIP_MANUAL_BADGE_GIDS.includes(gid)) {
+	// 전수 조사형이 아닌 지침: 전문가 직접 점수 입력 유도
+	if (!EXHAUSTIVE_GIDS.includes(gid)) {
 		return (
 			<span
 				className={`${styles.scoreBadge} ${styles.manual}`}
@@ -105,15 +104,8 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 		);
 	}
 
-	// 점수 계산
-	let score = 100;
-	if (EXHAUSTIVE_GIDS.includes(gid)) {
-		score = Math.round(((pass * 100 + review * 50) / (calcTotal * 100)) * 100);
-	} else {
-		const rawScore = 100 * Math.pow(0.8, fail) * Math.pow(0.95, review);
-		score = Math.round(rawScore);
-		if (calcTotal > 0 && pass === calcTotal) score = 100;
-	}
+	// 전수 조사형 점수 계산
+	const score = Math.round(((pass * 100 + review * 50) / (calcTotal * 100)) * 100);
 
 	return (
 		<span
