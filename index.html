@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AAK Workbench - KWCAG 접근성 진단 도구</title>
+  <meta name="description" content="한국 웹 접근성 지침(KWCAG 2.2) 기반 전문가용 접근성 진단 Chrome 확장 프로그램">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #ffffff;
+      --color-surface: #f8f9fa;
+      --color-border: #dee2e6;
+      --color-text: #212529;
+      --color-text-muted: #6c757d;
+      --color-primary: #2563eb;
+      --color-primary-hover: #1d4ed8;
+      --color-tab-active-bg: #ffffff;
+      --color-tab-inactive-bg: #f1f3f5;
+      --color-code-bg: #f4f4f5;
+      --radius: 8px;
+      --max-width: 860px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg: #0d1117;
+        --color-surface: #161b22;
+        --color-border: #30363d;
+        --color-text: #e6edf3;
+        --color-text-muted: #8b949e;
+        --color-primary: #58a6ff;
+        --color-primary-hover: #79c0ff;
+        --color-tab-active-bg: #0d1117;
+        --color-tab-inactive-bg: #161b22;
+        --color-code-bg: #1c2128;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background-color: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* 헤더 */
+    .site-header {
+      background-color: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: 2rem 1.5rem 0;
+    }
+
+    .site-header__inner {
+      max-width: var(--max-width);
+      margin: 0 auto;
+    }
+
+    .site-header__title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: 0.25rem;
+    }
+
+    .site-header__subtitle {
+      font-size: 0.95rem;
+      color: var(--color-text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    /* 탭 */
+    .tab-nav {
+      display: flex;
+      gap: 0;
+      list-style: none;
+      margin-top: 0.5rem;
+    }
+
+    .tab-nav__item {}
+
+    .tab-nav__btn {
+      display: inline-block;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.925rem;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      background: var(--color-tab-inactive-bg);
+      border: 1px solid var(--color-border);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.15s, background 0.15s;
+      margin-right: 4px;
+    }
+
+    .tab-nav__btn:hover {
+      color: var(--color-text);
+    }
+
+    .tab-nav__btn[aria-selected="true"] {
+      background: var(--color-tab-active-bg);
+      color: var(--color-primary);
+      border-bottom: 1px solid var(--color-tab-active-bg);
+      margin-bottom: -1px;
+      z-index: 1;
+      position: relative;
+    }
+
+    /* 콘텐츠 */
+    .tab-content {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.is-active {
+      display: block;
+    }
+
+    .loading {
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+      padding: 2rem 0;
+    }
+
+    /* 마크다운 렌더링 */
+    .markdown-body h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); }
+    .markdown-body h2 { font-size: 1.35rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--color-border); }
+    .markdown-body h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+    .markdown-body h4 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.4rem; }
+    .markdown-body p { margin: 0.75rem 0; }
+    .markdown-body ul, .markdown-body ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+    .markdown-body li { margin: 0.25rem 0; }
+    .markdown-body a { color: var(--color-primary); text-decoration: underline; }
+    .markdown-body a:hover { color: var(--color-primary-hover); }
+    .markdown-body code { background: var(--color-code-bg); padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.875em; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .markdown-body pre { background: var(--color-code-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+    .markdown-body pre code { background: none; padding: 0; font-size: 0.875rem; }
+    .markdown-body blockquote { border-left: 4px solid var(--color-primary); padding: 0.5rem 1rem; color: var(--color-text-muted); margin: 1rem 0; }
+    .markdown-body hr { border: none; border-top: 1px solid var(--color-border); margin: 2rem 0; }
+    .markdown-body table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+    .markdown-body th, .markdown-body td { padding: 0.5rem 0.75rem; border: 1px solid var(--color-border); text-align: left; }
+    .markdown-body th { background: var(--color-surface); font-weight: 600; }
+    .markdown-body strong { font-weight: 600; }
+
+    /* 푸터 */
+    .site-footer {
+      border-top: 1px solid var(--color-border);
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+    }
+
+    .site-footer a { color: var(--color-text-muted); }
+    .site-footer a:hover { color: var(--color-primary); }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="site-header__inner">
+      <h1 class="site-header__title">AAK Workbench</h1>
+      <p class="site-header__subtitle">A11Y Assistant for KWCAG — 한국 웹 접근성 전문가를 위한 진단 도구</p>
+      <nav aria-label="문서 탐색">
+        <ul class="tab-nav" role="tablist">
+          <li class="tab-nav__item" role="presentation">
+            <button class="tab-nav__btn" role="tab" aria-selected="true" aria-controls="panel-intro" id="tab-intro">소개</button>
+          </li>
+          <li class="tab-nav__item" role="presentation">
+            <button class="tab-nav__btn" role="tab" aria-selected="false" aria-controls="panel-changelog" id="tab-changelog">변경 이력</button>
+          </li>
+          <li class="tab-nav__item" role="presentation">
+            <button class="tab-nav__btn" role="tab" aria-selected="false" aria-controls="panel-guide" id="tab-guide">사용자 가이드</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="tab-content">
+      <div id="panel-intro" class="tab-panel is-active markdown-body" role="tabpanel" aria-labelledby="tab-intro">
+        <p class="loading">불러오는 중...</p>
+      </div>
+      <div id="panel-changelog" class="tab-panel markdown-body" role="tabpanel" aria-labelledby="tab-changelog">
+        <p class="loading">불러오는 중...</p>
+      </div>
+      <div id="panel-guide" class="tab-panel markdown-body" role="tabpanel" aria-labelledby="tab-guide">
+        <p class="loading">불러오는 중...</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/resistan/aak" target="_blank" rel="noopener">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://chromewebstore.google.com/detail/aak-workbench-kwcag/elkfaoflahgmpohidpefbijhnpncledj" target="_blank" rel="noopener">Chrome 웹 스토어</a>
+      &nbsp;·&nbsp;
+      MIT License
+    </p>
+  </footer>
+
+  <script>
+    const BASE = 'https://raw.githubusercontent.com/resistan/aak/main/';
+
+    // 탭별 파일 매핑
+    const TABS = [
+      { id: 'intro',     file: 'README.md'    },
+      { id: 'changelog', file: 'CHANGELOG.md' },
+      { id: 'guide',     file: 'USER_GUIDE.md' },
+    ];
+
+    // 마크다운 fetch & 렌더링
+    async function loadPanel(tabId, file) {
+      const panel = document.getElementById('panel-' + tabId);
+      if (panel.dataset.loaded) return;
+      try {
+        const res = await fetch(BASE + file);
+        if (!res.ok) throw new Error(res.status);
+        const text = await res.text();
+        panel.innerHTML = marked.parse(text);
+        panel.dataset.loaded = '1';
+      } catch (e) {
+        panel.innerHTML = '<p>문서를 불러오지 못했습니다. <a href="https://github.com/resistan/aak" target="_blank" rel="noopener">GitHub</a>에서 직접 확인해 주세요.</p>';
+      }
+    }
+
+    // 탭 전환
+    function activateTab(tabId) {
+      TABS.forEach(({ id }) => {
+        const btn   = document.getElementById('tab-' + id);
+        const panel = document.getElementById('panel-' + id);
+        const active = id === tabId;
+        btn.setAttribute('aria-selected', active);
+        panel.classList.toggle('is-active', active);
+      });
+      loadPanel(tabId, TABS.find(t => t.id === tabId).file);
+    }
+
+    // 이벤트 등록
+    TABS.forEach(({ id }) => {
+      document.getElementById('tab-' + id).addEventListener('click', () => activateTab(id));
+    });
+
+    // 키보드 탐색 (← →)
+    document.querySelector('.tab-nav').addEventListener('keydown', (e) => {
+      const ids = TABS.map(t => t.id);
+      const current = ids.findIndex(id => document.getElementById('tab-' + id).getAttribute('aria-selected') === 'true');
+      let next = current;
+      if (e.key === 'ArrowRight') next = (current + 1) % ids.length;
+      if (e.key === 'ArrowLeft')  next = (current - 1 + ids.length) % ids.length;
+      if (next !== current) {
+        activateTab(ids[next]);
+        document.getElementById('tab-' + ids[next]).focus();
+      }
+    });
+
+    // 초기 로드
+    loadPanel('intro', 'README.md');
+  </script>
+</body>
+</html>
