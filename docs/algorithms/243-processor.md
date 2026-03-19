@@ -1,4 +1,4 @@
-# ABT-2.4.3-Processor: 적절한 링크 텍스트 v0.12
+# ABT-2.4.3-Processor: 적절한 링크 텍스트 v0.20
 
 ### 🔗 References
 - KWCAG 2.2: 2.4.3 적절한 링크 텍스트

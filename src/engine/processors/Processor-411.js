@@ -40,33 +40,32 @@ class Processor411 {
       }
     }
 
+    const totalIdCount = idMap.size + duplicateIds.size; // 전체 고유 ID값 수
+    const validatorLink = `https://validator.w3.org/nu/?doc=${encodeURIComponent(window.location.href)}`;
+
     if (duplicateIds.size > 0) {
-      for (const id of duplicateIds) {
-        const duplicates = document.querySelectorAll(`[id="${id}"]`);
-        // 첫 번째 요소만 대표로 리포팅하고, 몇 개가 중복되었는지 안내
-        reports.push(this.analyze(duplicates[0], id, duplicates.length));
-      }
+      const duplicateList = Array.from(duplicateIds).join(', ');
+      reports.push(this.createReport(
+        document.body,
+        "검토 필요",
+        `[수동 검사 안내] 전체 ${totalIdCount}개 ID 중 ${duplicateIds.size}개가 중복 사용되었습니다. 중복된 ID: ${duplicateList}. 중복 ID는 aria-labelledby, label 연결 등 보조기기 탐색을 방해할 수 있으므로, 아래 Nu HTML Checker에서 전체 마크업 오류도 함께 확인하세요.`,
+        ["Rule 4.1.1 (Duplicate ID)"],
+        validatorLink
+      ));
     } else {
       reports.push(this.createReport(
         document.body,
         "검토 필요",
-        "[수동 검사 안내] 중복된 ID 속성은 발견되지 않았습니다. 단, 브라우저가 자동 보정한 태그 중첩 오류나 속성 중복 선언 등은 확장 프로그램이 완벽히 잡아낼 수 없으므로, W3C Nu HTML Checker 등 외부 도구를 이용해 최종 마크업 유효성을 검사하세요.",
-        ["Rule 4.1.1 (Manual Markup Review Required)"]
+        `[수동 검사 안내] 중복된 ID 속성은 발견되지 않았습니다. 단, 브라우저가 자동 보정한 태그 중첩 오류나 속성 중복 선언 등은 확장 프로그램이 완벽히 잡아낼 수 없으므로, 아래 Nu HTML Checker를 이용해 최종 마크업 유효성을 검사하세요.`,
+        ["Rule 4.1.1 (Manual Markup Review Required)"],
+        validatorLink
       ));
     }
 
     return reports;
   }
 
-  analyze(el, duplicateId, count) {
-    const status = "오류";
-    const message = `문서 내에 중복된 ID 속성값("${duplicateId}")이 ${count}개 존재합니다. ID는 문서 내에서 유일해야 하며, 중복 시 aria-labelledby나 label 연결 등 보조기기의 탐색을 심각하게 방해합니다.`;
-    const rules = ["Rule 4.1.1 (Duplicate ID)"];
-
-    return this.createReport(el, status, message, rules);
-  }
-
-  createReport(el, status, message, rules) {
+  createReport(el, status, message, rules, link) {
     return {
       guideline_id: this.id,
       elementInfo: {
@@ -74,7 +73,7 @@ class Processor411 {
         selector: el !== document.body ? this.utils.getSelector(el) : "body"
       },
       context: { smartContext: el !== document.body ? this.utils.getSmartContext(el) : "마크업 유효성 검사" },
-      result: { status, message, rules },
+      result: { status, message, rules, ...(link ? { link } : {}) },
       currentStatus: status,
       history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: message }]
     };

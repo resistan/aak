@@ -1,5 +1,5 @@
 /**
-* ABT Processor 2.1.2 (No Focus Trap)
+* ABT Processor 2.1.2 (초점 이동과 표시)
 *
 * KWCAG 2.2 지침 2.1.2 초점 이동과 표시
 * 키보드로 초점이 진입한 요소에서 다시 빠져나올 수 있어야 하며(Focus Trap 방지), 초점의 위치가 시각적으로 표시되어야 합니다.
@@ -8,8 +8,11 @@
 * - 모든 대화형 요소
 *
 * [주요 로직]
-* - 아웃라인 스타일 검사: :focus 시에 outline: none 처리되어 초점이 보이지 않는 요소 탐지
-* - 키보드 트랩: 특정 영역에 진입한 후 Esc 또는 Tab으로 탈출 불가능한 구조 분석
+* - 인라인 outline:none 탐지: 인라인 스타일로 포커스 인디케이터가 강제 제거된 요소 자동 검출
+* - 양수 tabindex 탐지: 논리적 초점 순서를 방해하는 tabindex > 0 요소 검출
+* - 수동 검사 안내 (2건):
+*   1. 초점 이동 순서 — 초점 시각화 도구를 활용한 Tab 순서 확인
+*   2. 초점 아웃라인 표시 — Tab 탐색 시 포커스 인디케이터 시각적 확인
 */
 class Processor212 {
   constructor() {
@@ -57,11 +60,27 @@ class Processor212 {
     });
 
     if (problematicTabindexes.length > 0) {
-      reports.push(this.createGeneralReport("수정 권고", `문서 중간/하단에 위치한 요소들에 양수 값의 tabindex(${problematicTabindexes.length}개)가 존재합니다. 이는 논리적인 초점 이동 순서를 방해할 수 있으므로, 가급적 DOM 구조를 통해 순서를 제어할 것을 권장합니다.`));
+      reports.push(this.createGeneralReport("수정 권고", `문서 중간/하단에 위치한 요소들에 양수 값의 tabindex(${problematicTabindexes.length}개)가 존재합니다. 이는 논리적인 초점 이동 순서를 방해할 수 있으므로, 가급적 DOM 구조를 통해 순서를 제어할 것을 권장합니다.`, "Rule 2.1.2 (Focus Order)"));
     }
 
-    // 초점 표시 가시성은 자동 검출이 불가능하므로 통합 수동 검사 안내 추가
-    reports.push(this.createGeneralReport("검토 필요", "[수동 검사 안내] 페이지에 진입한 후 키보드의 Tab 키를 눌러보세요. 모든 링크와 버튼을 이동할 때 초점(점선 테두리 등)이 화면에 명확하게 시각적으로 표시되는지 육안으로 확인해야 합니다."));
+    // 가시적인 포커스 가능 요소 개수 산출 (수동 검사 안내에 활용)
+    const visibleFocusableCount = focusableElements.filter(el => !this.utils.isHidden(el)).length;
+
+    // [수동 검사 1] 초점 이동 순서
+    // :focus 상태 스타일은 정적 스캔으로 읽을 수 없으므로 전문가 직접 확인 필요
+    reports.push(this.createGeneralReport(
+      "검토 필요",
+      `[수동 검사] 초점 이동 순서 — 총 ${visibleFocusableCount}개의 포커스 가능 요소가 확인되었습니다. 상단 툴바의 '초점 순서 시각화' 버튼을 켠 후 Tab 키로 페이지를 탐색하세요. 초점이 시각적 배치 및 콘텐츠의 논리적 흐름과 일치하는 순서로 이동하는지 확인하고 적절/오류로 판정하세요.`,
+      "Rule 2.1.2 (Focus Order)"
+    ));
+
+    // [수동 검사 2] 초점 아웃라인 표시
+    // CSS :focus 스타일은 정적 스캔으로 읽을 수 없으므로 전문가 직접 확인 필요
+    reports.push(this.createGeneralReport(
+      "검토 필요",
+      `[수동 검사] 초점 아웃라인 표시 — 총 ${visibleFocusableCount}개의 포커스 가능 요소가 확인되었습니다. Tab 키로 각 요소를 순서대로 이동하면서 포커스 인디케이터(아웃라인, 배경색 변화 등)가 모든 요소에 명확하게 표시되는지 육안으로 확인하고 적절/오류로 판정하세요.`,
+      "Rule 2.1.2 (Focus Visibility)"
+    ));
 
     return reports;
   }
@@ -104,12 +123,12 @@ class Processor212 {
     };
   }
 
-  createGeneralReport(status, message) {
+  createGeneralReport(status, message, rule = "Rule 2.1.2 (Focus Order)") {
     return {
       guideline_id: this.id,
       elementInfo: { tagName: 'BODY', selector: 'document' },
       context: { smartContext: "페이지 전체 초점 흐름 검사" },
-      result: { status, message, rules: ["Rule 2.1.2 (Focus Order)"] },
+      result: { status, message, rules: [rule] },
       currentStatus: status,
       history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: message }]
     };

@@ -92,6 +92,7 @@ export interface ABTItem {
     status: string;
     message: string;
     rules: string[];
+    link?: string;
   };
   currentStatus: string;
   finalComment: string;

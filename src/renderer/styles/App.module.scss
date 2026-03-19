@@ -562,6 +562,7 @@
     }
 
     h3 { font-size: $text-sm; font-weight: 700; color: $text; margin: 0 0 $space-1 0; line-height: 1.4; }
+    .externalLink { display: inline-block; font-size: $text-xs; color: $accent; text-decoration: none; margin-bottom: $space-1; &:hover { text-decoration: underline; } }
     .selector { font-size: $text-xs; color: $text-d; font-family: monospace; }
     // 실제 마크업 스니펫 표시 (selector 대체)
     .markupTag {

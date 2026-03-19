@@ -98,6 +98,19 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 					{/* 메시지 */}
 					<h3 className={isJudged ? styles.judgedTitle : ''}>{item.result?.message}</h3>
 
+					{/* 외부 검사 도구 링크 (link 필드가 있는 경우) */}
+					{!isJudged && item.result?.link && (
+						<a
+							href={item.result.link}
+							target="_blank"
+							rel="noopener noreferrer"
+							className={styles.externalLink}
+							onClick={e => e.stopPropagation()}
+						>
+							Nu HTML Checker로 검사하기 →
+						</a>
+					)}
+
 					{/* 명도 대비 미리보기 (1.4.3 전용) */}
 					{!isJudged && item.guideline_id === '1.4.3' && (item.context as any).color && (
 						<div
