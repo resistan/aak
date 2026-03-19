@@ -99,7 +99,7 @@ class Processor211 {
     return null;
   }
 
-  createReport(el, status, message) {
+  createReport(el, status, message, rules = ["Rule 1.1 (Keyboard Interaction)"]) {
     return {
       guideline_id: this.id,
       elementInfo: {
@@ -114,7 +114,7 @@ class Processor211 {
       result: {
         status: status,
         message: message,
-        rules: ["Rule 1.1 (Keyboard Interaction)"]
+        rules: rules
       },
       currentStatus: status,
       history: [{

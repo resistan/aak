@@ -48,14 +48,17 @@ class Processor332 {
         labelMethod = "aria-label";
       }
       else if (el.hasAttribute('aria-labelledby')) {
-        const targetId = el.getAttribute('aria-labelledby');
-        const targetEl = document.getElementById(targetId);
-        if (targetEl && targetEl.textContent.trim() !== "") {
+        const ids = el.getAttribute('aria-labelledby').trim().split(/\s+/);
+        const labelText = ids.map(id => {
+          const ref = document.getElementById(id);
+          return ref ? ref.textContent.trim() : "";
+        }).join(" ").trim();
+        if (labelText !== "") {
           hasLabel = true;
           labelMethod = "aria-labelledby";
         } else {
           status = "오류";
-          message = `aria-labelledby 대상(id="${targetId}")이 없거나 내용이 비어있습니다.`;
+          message = `aria-labelledby 대상(id="${ids.join(', ')}")이 없거나 내용이 비어있습니다.`;
           rules.push("Rule 3.3.2 (Invalid aria-labelledby)");
         }
       }

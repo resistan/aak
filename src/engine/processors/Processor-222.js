@@ -21,7 +21,7 @@ class Processor222 {
     }
 
     // 2. 캐러셀 및 슬라이더 탐지 (클래스명/역할 기반 휴리스틱)
-    const carousels = document.querySelectorAll('[class*="carousel"], [class*="slider"], [class*="swiper"], [role="marquee"], [role="timer"]');
+    const carousels = document.querySelectorAll('[class*="carousel"], [class*="slider"], [class*="swiper"], [class*="slick"], [role="marquee"], [role="timer"]');
     for (const el of carousels) {
       const report = this.analyzeCarousel(el);
       if (report) reports.push(report);

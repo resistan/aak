@@ -76,7 +76,6 @@ class Processor242 {
         context: { smartContext: "페이지 헤딩 구조(Heading Outline) 분석 결과입니다.", outline: outline },
         result: { status: "참고자료", message: `페이지 내에 총 ${headings.length}개의 헤딩이 존재합니다.` },
         currentStatus: "참고자료",
-        currentStatus: "적절",
         history: [{ timestamp: new Date().toLocaleTimeString(), status: "탐지", comment: "헤딩 아웃라인 수집 완료" }]
       });
 

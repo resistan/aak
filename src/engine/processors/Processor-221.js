@@ -27,9 +27,9 @@ class Processor221 {
 
     if (metaRefresh) {
       reports.push(this.analyze(metaRefresh, "meta_refresh"));
-    } else {
-      reports.push(this.analyze(document.body, "manual"));
     }
+    // meta refresh 여부와 무관하게 JS 기반 타이머 수동 검토 리포트 항상 발행
+    reports.push(this.analyze(document.body, "manual"));
 
     return reports;
   }

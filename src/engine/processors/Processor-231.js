@@ -23,13 +23,11 @@ class Processor231 {
     const reports = [];
     const elements = document.querySelectorAll('marquee, blink, video');
 
-    if (elements.length > 0) {
-      for (const el of elements) {
-        reports.push(this.analyze(el));
-      }
-    } else {
-      reports.push(this.analyze(document.body, true));
+    for (const el of elements) {
+      reports.push(this.analyze(el));
     }
+    // 특정 요소 감지 여부와 무관하게 전역 수동 검토 리포트 항상 발행
+    reports.push(this.analyze(document.body, true));
     return reports;
   }
 
