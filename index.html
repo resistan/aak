@@ -231,6 +231,17 @@
         const text = await res.text();
         panel.innerHTML = marked.parse(text);
         panel.dataset.loaded = '1';
+        // 패널 내 .md 링크를 탭 전환으로 처리
+        TABS.forEach(({ id, file }) => {
+          panel.querySelectorAll(`a[href="./${file}"], a[href="${file}"]`).forEach(link => {
+            link.href = '#';
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              activateTab(id);
+              document.getElementById('tab-' + id).focus();
+            });
+          });
+        });
       } catch (e) {
         panel.innerHTML = '<p>문서를 불러오지 못했습니다. <a href="https://github.com/resistan/aak" target="_blank" rel="noopener">GitHub</a>에서 직접 확인해 주세요.</p>';
       }
