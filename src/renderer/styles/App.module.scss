@@ -531,6 +531,27 @@
     .selector { display: none; }
   }
 
+  // 해당없음 상태: 한 줄 컴팩트 뷰
+  &.ignored {
+    background: $bg-p;
+    padding: $space-1 $space-3;
+    border-style: dashed;
+    border-color: rgba(71, 85, 105, 0.25);
+    &:hover { border-style: solid; border-color: $text-d; }
+
+    .cardTop { margin-bottom: 0; }
+    .miniStatus { opacity: 0.65; }
+    h3 {
+      font-size: $text-xs;
+      font-weight: 500;
+      color: $text-m;
+      margin-bottom: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
   .cardLayout { display: flex; gap: $space-3; align-items: flex-start; }
 
   .thumbBox {
@@ -547,17 +568,19 @@
       display: flex; justify-content: space-between; align-items: center; margin-bottom: $space-2;
       .miniStatus {
         font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; text-transform: uppercase;
-        &.오류 { background: rgba($fail, 0.1); color: $fail; border: 1px solid rgba($fail, 0.2); }
-        &.적절 { background: rgba($pass, 0.1); color: $pass; border: 1px solid rgba($pass, 0.2); }
-        &.검토_필요 { background: rgba($review, 0.1); color: $review; border: 1px solid rgba($review, 0.2); }
-        &.수정_권고 { background: rgba($warn, 0.1); color: $warn; border: 1px solid rgba($warn, 0.2); }
-        &.참고자료 { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.2); }
+        &.error    { background: rgba($fail, 0.1); color: $fail; border: 1px solid rgba($fail, 0.2); }
+        &.pass     { background: rgba($pass, 0.1); color: $pass; border: 1px solid rgba($pass, 0.2); }
+        &.review   { background: rgba($review, 0.1); color: $review; border: 1px solid rgba($review, 0.2); }
+        &.warning  { background: rgba($warn, 0.1); color: $warn; border: 1px solid rgba($warn, 0.2); }
+        &.reference { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.2); }
+        &.na       { background: rgba(71, 85, 105, 0.1); color: #475569; border: 1px solid rgba(71, 85, 105, 0.25); }
       }
       .quickJudge {
         display: flex; gap: $space-1; opacity: 0; transition: opacity 0.2s;
         button { font-size: $text-xs; font-weight: 800; padding: 2px $space-2; border-radius: $space-1; border: none; cursor: pointer; color: white; transition: transform 0.1s; &:active { transform: scale(0.95); } }
         .qPass { background: #16a34a; &:hover { background: #15803d; } }
         .qFail { background: #dc2626; &:hover { background: #b91c1c; } }
+        .qIgnore { background: #475569; &:hover { background: #334155; } }
       }
     }
 
@@ -619,9 +642,9 @@
     margin-top: $space-3; padding-top: $space-3; border-top: 1px solid $border;
     .ctx { font-size: $text-xs; color: $text-m; font-style: italic; margin-bottom: $space-3; }
     .miniActions { display: flex; gap: $space-2; button { font-size: $text-xs; font-weight: 800; padding: 3px $space-2; border-radius: $space-1; background: $bg-h; border: none; color: $text-m; cursor: pointer; &:hover { background: $border; color: $text; } } }
-    .deleteManualBtn { 
-      background: transparent !important; 
-      color: $text-d !important; 
+    .deleteManualBtn {
+      background: transparent !important;
+      color: $text-d !important;
       border: 1px solid $border !important;
       &:hover { color: #ef4444 !important; border-color: #ef4444 !important; background: rgba(239, 68, 68, 0.05) !important; }
     }
@@ -648,6 +671,7 @@
       
       &.pass.active { background: $pass; color: white; border-color: $pass; }
       &.fail.active { background: #dc2626; color: white; border-color: #dc2626; }
+      &.ignore.active { background: #475569; color: white; border-color: #475569; }
       &:hover:not(.active) { background: $bg-h; }
     }
   }

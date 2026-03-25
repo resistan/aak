@@ -76,7 +76,7 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 	// 점수 계산
 	let pass = 0, fail = 0, review = 0, calcTotal = 0;
 	items.forEach(i => {
-		if (i.currentStatus === '참고자료') return;
+		if (i.currentStatus === '참고자료' || i.currentStatus === '해당없음') return;
 		const weight = (i as any).isSummary && (i as any).passCount ? (i as any).passCount : 1;
 		calcTotal += weight;
 		if (i.currentStatus === '적절') pass += weight;
@@ -104,7 +104,23 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 		);
 	}
 
-	// 전수 조사형 점수 계산
+	// 전수 조사형 점수 계산 - 모든 항목이 해당없음/참고자료면 N/A
+	if (calcTotal === 0) {
+		return (
+			<span
+				className={styles.naBadge}
+				onClick={(e) => {
+					e.stopPropagation();
+					alert("모든 항목이 해당없음 처리되어 점수를 산정할 수 없습니다.");
+				}}
+				tabIndex={0}
+				role="button"
+				aria-label="N/A 항목"
+			>
+				N/A
+			</span>
+		);
+	}
 	const score = Math.round(((pass * 100 + review * 50) / (calcTotal * 100)) * 100);
 
 	return (

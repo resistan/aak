@@ -117,15 +117,25 @@ class Processor111 {
 
     // [단계 A] 누락 오류 판정
     if (!isDecorative && !accessibleName) {
-      status = "오류";
-      if (tagName === "input") {
-        message = "이미지 버튼(input type='image')에 대체 텍스트(alt 등)가 누락되었습니다.";
-      } else if (tagName === "svg") {
-        message = "의미 있는 SVG 요소에 <title> 또는 aria-label이 제공되지 않았습니다.";
+      // 부모 대화형 요소에 텍스트가 있으면 장식용 처리 누락으로 간주 (수정 권고)
+      if (functionalContext.isFunctional && functionalContext.parentText) {
+        const preview = functionalContext.parentText.length > 20
+          ? functionalContext.parentText.substring(0, 20) + '...'
+          : functionalContext.parentText;
+        status = "수정 권고";
+        message = `대화형 요소 내 이미지에 대체 텍스트가 없습니다. 부모에 텍스트("${preview}")가 있으므로 장식용 처리(aria-hidden="true" 또는 alt="")를 권고합니다.`;
+        rules.push("Rule 1.2 (Missing Alt in Functional)");
       } else {
-        message = "대체 텍스트 속성(alt 등)이 누락되었습니다. 수정을 요청하세요.";
+        status = "오류";
+        if (tagName === "input") {
+          message = "이미지 버튼(input type='image')에 대체 텍스트(alt 등)가 누락되었습니다.";
+        } else if (tagName === "svg") {
+          message = "의미 있는 SVG 요소에 <title> 또는 aria-label이 제공되지 않았습니다.";
+        } else {
+          message = "대체 텍스트 속성(alt 등)이 누락되었습니다. 수정을 요청하세요.";
+        }
+        rules.push("Rule 1.1 (Missing Alt)");
       }
-      rules.push("Rule 1.1 (Missing Alt)");
     }
 
     // [단계 B] 장식용 + 기능형 검사

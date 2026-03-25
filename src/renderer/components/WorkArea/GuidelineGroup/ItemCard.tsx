@@ -26,6 +26,16 @@ interface ItemCardProps {
 	onDeleteManual?: () => void;
 }
 
+const STATUS_CLASS: Record<string, string> = {
+	'오류': 'error',
+	'적절': 'pass',
+	'검토 필요': 'review',
+	'수정 권고': 'warning',
+	'부적절': 'error',
+	'참고자료': 'reference',
+	'해당없음': 'na',
+};
+
 export const ItemCard: React.FC<ItemCardProps> = ({
 	item,
 	isSelected,
@@ -44,6 +54,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 	onDeleteManual
 }) => {
 	const isJudged = item.history.length > 1 || !!item.finalComment;
+	const isIgnored = item.currentStatus === '해당없음';
 
 	const handleClick = () => {
 		onSelect();
@@ -55,13 +66,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 			onClick={handleClick}
 			onKeyDown={(e) => handleKeyDown(e, handleClick)}
 			tabIndex={0}
-			role="button"
-			aria-selected={isSelected}
-			className={`${styles.miniCard} ${isSelected ? styles.selected : ''} ${isJudged ? styles.judged : ''}`}
+			aria-current={isSelected ? 'true' : undefined}
+			className={`${styles.miniCard} ${isSelected ? styles.selected : ''} ${isJudged ? styles.judged : ''} ${isIgnored ? styles.ignored : ''}`}
 		>
 			<div className={styles.cardLayout}>
-				{/* 썸네일 */}
-				{!isJudged && item.elementInfo.src && item.elementInfo.src !== 'N/A' && item.guideline_id !== '1.2.1' && (
+				{/* 썸네일 - 해당없음이면 숨김 */}
+				{!isJudged && !isIgnored && item.elementInfo.src && item.elementInfo.src !== 'N/A' && item.guideline_id !== '1.2.1' && (
 					<div className={styles.thumbBox}>
 						<img src={item.elementInfo.src} alt="미리보기" />
 					</div>
@@ -70,7 +80,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 				<div className={styles.cardMain}>
 					{/* 상단: 상태 + 빠른 판정 */}
 					<div className={styles.cardTop}>
-						<div className={`${styles.miniStatus} ${styles[item.currentStatus.replace(' ', '_')]}`}>
+						<div className={`${styles.miniStatus} ${styles[STATUS_CLASS[item.currentStatus] ?? '']}`}>
 							{item.currentStatus}
 						</div>
 						{item.elementInfo.selector !== 'outline' && (
@@ -91,6 +101,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 								>
 									오류
 								</button>
+								<button
+									className={styles.qIgnore}
+									onClick={(e) => { e.stopPropagation(); onQuickJudge('해당없음'); }}
+									title="해당없음으로 판정"
+									aria-label="해당없음으로 판정"
+								>
+									해당없음
+								</button>
 							</div>
 						)}
 					</div>
@@ -98,39 +116,44 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 					{/* 메시지 */}
 					<h3 className={isJudged ? styles.judgedTitle : ''}>{item.result?.message}</h3>
 
-					{/* 외부 검사 도구 링크 (link 필드가 있는 경우) */}
-					{!isJudged && item.result?.link && (
-						<a
-							href={item.result.link}
-							target="_blank"
-							rel="noopener noreferrer"
-							className={styles.externalLink}
-							onClick={e => e.stopPropagation()}
-						>
-							Nu HTML Checker로 검사하기 →
-						</a>
-					)}
+					{/* 해당없음이면 이하 정보 숨김 */}
+					{!isIgnored && (
+						<>
+							{/* 외부 검사 도구 링크 */}
+							{!isJudged && item.result?.link && (
+								<a
+									href={item.result.link}
+									target="_blank"
+									rel="noopener noreferrer"
+									className={styles.externalLink}
+									onClick={e => e.stopPropagation()}
+								>
+									Nu HTML Checker로 검사하기 →
+								</a>
+							)}
 
-					{/* 명도 대비 미리보기 (1.4.3 전용) */}
-					{!isJudged && item.guideline_id === '1.4.3' && (item.context as any).color && (
-						<div
-							className={styles.contrastPreview}
-							style={{
-								color: (item.context as any).color,
-								backgroundColor: (item.context as any).backgroundColor
-							}}
-						>
-							Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
-						</div>
-					)}
+							{/* 명도 대비 미리보기 (1.4.3 전용) */}
+							{!isJudged && item.guideline_id === '1.4.3' && (item.context as any).color && (
+								<div
+									className={styles.contrastPreview}
+									style={{
+										color: (item.context as any).color,
+										backgroundColor: (item.context as any).backgroundColor
+									}}
+								>
+									Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
+								</div>
+							)}
 
-					{/* 마크업 스니펫 또는 셀렉터 */}
-					{item.elementInfo.selector === 'outline' ? (
-						<span className={styles.outlineLabel}>Heading Outline</span>
-					) : item.elementInfo.openingTag ? (
-						<code className={styles.markupTag}>{item.elementInfo.openingTag}</code>
-					) : (
-						<code className={styles.selector}>{item.elementInfo.selector}</code>
+							{/* 마크업 스니펫 또는 셀렉터 */}
+							{item.elementInfo.selector === 'outline' ? (
+								<span className={styles.outlineLabel}>Heading Outline</span>
+							) : item.elementInfo.openingTag ? (
+								<code className={styles.markupTag}>{item.elementInfo.openingTag}</code>
+							) : (
+								<code className={styles.selector}>{item.elementInfo.selector}</code>
+							)}
+						</>
 					)}
 				</div>
 			</div>
@@ -140,13 +163,22 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 				<div className={styles.miniDetail}>
 					<div className={styles.smartContextView}>
 						{item.guideline_id === '1.1.1' ? (
-							<>
-								<span>...{item.context.smartContext.split(item.elementInfo.alt || "")[0]}</span>
-								<span className={styles.highlight}>
-									[{((item.elementInfo as any).sourceAttr || 'alt')}="{item.elementInfo.alt || ''}"]
-								</span>
-								<span>{item.context.smartContext.split(item.elementInfo.alt || "")[1]}...</span>
-							</>
+							item.elementInfo.alt ? (
+								<>
+									<span>...{item.context.smartContext.split(item.elementInfo.alt)[0]}</span>
+									<span className={styles.highlight}>
+										[{(item.elementInfo as any).sourceAttr || 'alt'}="{item.elementInfo.alt}"]
+									</span>
+									<span>{item.context.smartContext.split(item.elementInfo.alt)[1]}...</span>
+								</>
+							) : (
+								<>
+									<span>"{item.context.smartContext}"</span>
+									<span className={styles.highlight}>
+										[{(item.elementInfo as any).sourceAttr || 'alt'}=""] (대체 텍스트 없음)
+									</span>
+								</>
+							)
 						) : item.guideline_id === '2.4.2' && item.elementInfo.selector === 'outline' ? (
 							<div className={styles.outlineView}>
 								{(item.context as any).outline?.map((h: any, idx: number) => (
@@ -213,6 +245,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 								onClick={() => setSelectedJudgeStatus('오류')}
 							>
 								오류
+							</button>
+							<button
+								className={`${styles.jsBtn} ${styles.ignore} ${selectedJudgeStatus === '해당없음' ? styles.active : ''}`}
+								onClick={() => setSelectedJudgeStatus('해당없음')}
+							>
+								해당없음
 							</button>
 						</div>
 						<div className={styles.actionBtns}>

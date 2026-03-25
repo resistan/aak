@@ -89,7 +89,6 @@ export function useSessionManager(items: ABTItem[]) {
 					const bManual = b.elementInfo?.tagName === 'MANUAL';
 					if (aManual && !bManual) return -1;
 					if (!aManual && bManual) return 1;
-					// 시간순 (최신 항목 상단)
 					const aTime = new Date(a.pageInfo?.timestamp || 0).getTime();
 					const bTime = new Date(b.pageInfo?.timestamp || 0).getTime();
 					return bTime - aTime;
