@@ -14,7 +14,7 @@ class ABTConnector {
           window.ABTCore.highlightElement(message.selector);
           sendResponse({ status: 'success' });
         } else if (message.type === 'RUN_AUDIT' && window.ABTQuickScan) {
-          console.log("ABT: Audit triggered via Extension UI");
+          // console.log("ABT: Audit triggered via Extension UI");
           window.ABTQuickScan();
           sendResponse({ status: 'started' });
         } else if (message.type === 'TOGGLE_CSS' && window.ABTCore) {

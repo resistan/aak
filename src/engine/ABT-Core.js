@@ -49,7 +49,7 @@ class ABTCore {
       console.warn("ABT: Desktop 앱과 연결되어 있지 않습니다.");
     }
 
-    console.log("ABT: Starting Full Audit...");
+    // console.log("ABT: Starting Full Audit...");
     let totalIssues = 0;
 
     const pageInfo = {
@@ -67,9 +67,9 @@ class ABTCore {
           guideline_id: id
         });
 
-        console.log(`ABT: Running Processor [${id}]...`);
+        // console.log(`ABT: Running Processor [${id}]...`);
         const reports = await processor.scan();
-        console.log(`ABT: Processor [${id}] scanned, found ${reports?.length || 0} items.`);
+        // console.log(`ABT: Processor [${id}] scanned, found ${reports?.length || 0} items.`);
 
         if (reports && reports.length > 0) {
           const batch = reports
@@ -129,6 +129,9 @@ class ABTCore {
       } catch (error) {
         console.error(`ABT: Error in Processor [${id}]:`, error);
       }
+
+      // 프로세서 간 메인 스레드 양보 (UI 인터랙션 보장)
+      await yieldToMain();
     }
     // 모든 지침 진단 완료 신호 전송
     this.connector.send({
@@ -137,7 +140,7 @@ class ABTCore {
       totalIssues: totalIssues
     });
 
-    console.log(`ABT: Audit Complete. Total ${totalIssues} issues sent.`);
+    // console.log(`ABT: Audit Complete. Total ${totalIssues} issues sent.`);
   }
 
   /**
@@ -334,7 +337,7 @@ class ABTCore {
           }
         });
       }
-      console.log(`ABT: Image Alt View ${enable ? 'Enabled' : 'Disabled'}`);
+      // console.log(`ABT: Image Alt View ${enable ? 'Enabled' : 'Disabled'}`);
     } catch (e) {
       console.error("ABT: Failed to toggle image alt view", e);
     }
@@ -351,7 +354,7 @@ class ABTCore {
           ss.disabled = !!enable;
         } catch (e) {}
       });
-      console.log(`ABT: Linear View ${enable ? 'Enabled' : 'Disabled'}`);
+      // console.log(`ABT: Linear View ${enable ? 'Enabled' : 'Disabled'}`);
     } catch (e) {
       console.error("ABT: Failed to toggle linear view", e);
     }
@@ -375,7 +378,7 @@ class ABTCore {
       // 기능을 켜는 순간 전체 경로 자동 시각화 실행
       this.visualizeFullFocusOrder();
 
-      console.log("ABT: Focus Order Visualization Enabled");
+      // console.log("ABT: Focus Order Visualization Enabled");
     } else {
       this._removeFocusListeners();
       if (this._syncHandler) {
@@ -383,7 +386,7 @@ class ABTCore {
         window.removeEventListener('resize', this._syncHandler);
       }
       this._removeFocusOverlay();
-      console.log("ABT: Focus Order Visualization Disabled");
+      // console.log("ABT: Focus Order Visualization Disabled");
     }
   }
 
@@ -430,13 +433,13 @@ class ABTCore {
     });
 
     this._renderFocusPath();
-    console.log(`ABT: Full focus order visualized (${this.focusPath.length} items)`);
+    // console.log(`ABT: Full focus order visualized (${this.focusPath.length} items)`);
   }
 
   resetFocusTracking() {
     this.focusPath = [];
     this._renderFocusPath();
-    console.log("ABT: Focus Path Reset");
+    // console.log("ABT: Focus Path Reset");
   }
 
   _setupFocusListeners() {
@@ -472,7 +475,7 @@ class ABTCore {
       this.focusPath.push(info);
       this.currentFocusIdx = this.focusPath.length - 1;
       this._renderFocusPath();
-      console.log(`ABT: Focus tracked [#${this.focusPath.length}]`, info.selector);
+      // console.log(`ABT: Focus tracked [#${this.focusPath.length}]`, info.selector);
 
       const last = this.focusPath[this.focusPath.length - 1];
       if (last && last.selector === info.selector) return;
@@ -591,6 +594,17 @@ class ABTCore {
 }
 
 
+
+/**
+ * 메인 스레드를 잠깐 양보하여 브라우저가 렌더링 및 이벤트 처리를 할 수 있도록 합니다.
+ * Chrome 115+ scheduler.yield() 우선, 폴백으로 setTimeout(0) 사용.
+ */
+function yieldToMain() {
+  if (typeof scheduler !== 'undefined' && typeof scheduler.yield === 'function') {
+    return scheduler.yield();
+  }
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
 
 // Global Singleton
 window.ABTCore = new ABTCore();

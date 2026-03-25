@@ -2,17 +2,21 @@
 * ABT Processor 1.4.1 (Use of Color)
 *
 * KWCAG 2.2 지침 1.4.1 색에 무관한 콘텐츠 인식
-* 색상만으로 정보를 구분하거나 강조하지 않아야 합니다. (예: 문장 내 링크)
+* 색상만으로 정보를 구분하거나 강조하지 않아야 합니다.
 *
 * [진단 범위]
-* - <a> 링크 요소 (문장 내 포함 여부 정밀 분석)
-* - 배경색만 있고 텍스트가 없는 UI 요소
-* - 차트 및 그래프 콘텐츠 (Canvas, SVG)
+* - <a> 링크 요소: 문장 내 링크가 밑줄 없이 색상으로만 구분되는 경우
+* - 형제 색상 비교: 같은 부모 안에서 서로 다른 배경색으로 상태/구분을 나타내는 요소 그룹
+* - 클래스명 기반 상태 요소: status, badge, dot 등 의미론적 힌트가 있는 배경색 전용 요소
+* - 시각적 데이터 콘텐츠: 차트, 그래프 등 색상 구분이 필수적인 영역
 *
 * [주요 로직]
-* - 지능형 문맥 분석: 링크가 독립적인 UI 항목(메뉴 등)인지, 문장 속 일부인지 레이아웃 스타일(Flex/Grid)과 인접 텍스트 노드를 통해 식별
-* - 배경색 요소 탐지: 텍스트 없이 색상만으로 상태를 나타내는 요소(예: 상태 점) 탐지
-* - 시각 정보 콘텐츠: 차트 등 색상 구분이 필수적인 영역에 대한 수동 검토 유도
+* - 링크 문맥 분석: 부모 레이아웃(Flex/Grid), 인접 텍스트 노드, 인라인 여부로 문장 내 포함 판단
+* - 형제 색상 비교: 텍스트 없는 요소들이 같은 부모 아래 서로 다른 배경색을 가질 때 색 구분 구조로 탐지
+* - 클래스명 탐지: status/badge/dot/indicator 등 클래스명에 의미론적 힌트가 있는 요소 중 색상만 존재하는 경우
+* - 장식 요소 제외: aria-hidden, 인터랙티브 요소(button, a 등) 내부 자식은 탐지 대상에서 제외
+* - SVG 아이콘 제외: 도형 요소(path, rect 등) 5개 미만은 아이콘으로 간주
+*   canvas, .chart, [id*="chart"] 등은 클래스/태그 자체가 의미론적 근거이므로 크기 조건 불필요
 */
 class Processor141 {
   constructor() {
@@ -63,21 +67,70 @@ class Processor141 {
       }
     }
 
-    // 2. 배경색만 있고 텍스트가 없는 요소 (아이콘 버튼 등)
-    const elementsWithBg = document.querySelectorAll('div, span, i, b');
-    for (const el of elementsWithBg) {
-      if (this.utils.isHidden(el)) continue;
-      const style = window.getComputedStyle(el);
-      const hasBgColor = style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent';
-      const hasNoText = el.innerText.trim().length === 0;
-      const hasNoAria = !el.getAttribute('aria-label') && !el.getAttribute('title');
+    const INTERACTIVE_SELECTOR = 'button, a[href], [role="button"], [role="link"], [role="menuitem"]';
 
-      if (hasBgColor && hasNoText && hasNoAria && (parseInt(style.width) > 0 || parseInt(style.height) > 0)) {
-        reports.push(this.createReport(el, "검토 필요", "요소에 배경색은 있으나 텍스트나 레이블이 없습니다. 색상만으로 정보를 전달하고 있다면 패턴이나 텍스트를 추가하세요."));
-      }
+    // 공통 필터: 숨김/장식/인터랙티브 자식 제외
+    const isDecorative = (el) =>
+      this.utils.isHidden(el) ||
+      el.getAttribute('aria-hidden') === 'true' ||
+      !!el.closest(INTERACTIVE_SELECTOR);
+
+    const getEffectiveBg = (el) => {
+      const bg = window.getComputedStyle(el).backgroundColor;
+      return (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') ? null : bg;
+    };
+
+    // 2. 형제 색상 비교: 같은 부모 안에서 서로 다른 배경색을 가진 텍스트 없는 요소가 2개 이상
+    // 예: 빨강/초록/노랑 상태 점 그룹, 색상 범례 등
+    const siblingCandidates = Array.from(document.querySelectorAll('div, span, li, td, th'))
+      .filter(el => !isDecorative(el))
+      .filter(el => el.innerText.trim().length === 0)
+      .filter(el => !!getEffectiveBg(el));
+
+    const parentMap = new Map();
+    for (const el of siblingCandidates) {
+      const parent = el.parentElement;
+      if (!parent) continue;
+      if (!parentMap.has(parent)) parentMap.set(parent, []);
+      parentMap.get(parent).push({ el, bg: getEffectiveBg(el) });
     }
 
-    // 3. 그래프/차트 콘텐츠 탐지 (Canvas, SVG, Chart-related containers)
+    for (const [parent, items] of parentMap) {
+      if (items.length < 2) continue;
+      const uniqueColors = new Set(items.map(i => i.bg));
+      if (uniqueColors.size < 2) continue; // 색상이 모두 같으면 색 비교가 아님
+
+      reports.push(this.createReport(
+        parent,
+        "검토 필요",
+        `같은 영역 안에 서로 다른 배경색을 가진 텍스트 없는 요소가 ${items.length}개 있습니다. 색상만으로 상태나 구분을 나타내고 있다면 텍스트, 패턴 등 추가 구분 수단이 필요합니다.`
+      ));
+    }
+
+    // 3. 클래스명 기반 상태/분류 요소: status, badge, dot 등 의미론적 힌트가 있는 요소
+    const STATUS_SELECTOR = [
+      '[class*="status"]', '[class*="badge"]', '[class*="dot"]',
+      '[class*="indicator"]', '[class*="tag"]', '[class*="chip"]',
+      '[class*="pill"]', '[class*="state"]', '[class*="label"]'
+    ].join(', ');
+
+    const statusElements = document.querySelectorAll(STATUS_SELECTOR);
+    for (const el of statusElements) {
+      if (isDecorative(el)) continue;
+      const bg = getEffectiveBg(el);
+      if (!bg) continue;
+      // 텍스트나 접근성 레이블이 있으면 색 외 수단이 있으므로 제외
+      if (el.innerText.trim().length > 0) continue;
+      if (el.getAttribute('aria-label') || el.getAttribute('title')) continue;
+
+      reports.push(this.createReport(
+        el,
+        "검토 필요",
+        "상태나 분류를 나타낼 수 있는 요소가 배경색만으로 표현되고 있습니다. 색상 외에 텍스트, 아이콘, 패턴 등 추가 구분 수단이 있는지 검토하세요."
+      ));
+    }
+
+    // 4. 그래프/차트 콘텐츠 탐지 (Canvas, SVG, Chart-related containers)
     const potentialCharts = document.querySelectorAll('canvas, svg:not([role="img"]), .chart, [id*="chart"], .graph, [id*="graph"]');
     const processedCharts = new Set();
 
@@ -96,15 +149,16 @@ class Processor141 {
       }
       if (isNested) continue;
 
-      const style = window.getComputedStyle(el);
-      const width = parseInt(style.width);
-      const height = parseInt(style.height);
-
-      // 너무 작은 요소(아이콘 등)는 제외
-      if (width > 50 && height > 50) {
-        processedCharts.add(el);
-        reports.push(this.createReport(el, "검토 필요", "그래프나 차트 등 시각적 정보를 담은 콘텐츠가 탐지되었습니다. 데이터의 계열이나 값을 구분할 때 색상뿐만 아니라 패턴, 모양, 레이블 등 색에 무관하게 인식할 수 있는 수단이 함께 제공되는지 검토하세요."));
+      // SVG는 크기 대신 자식 도형 요소 수로 아이콘/차트 구분
+      // 도형 요소가 5개 미만이면 단순 아이콘 SVG로 간주하고 제외
+      if (el.tagName.toLowerCase() === 'svg') {
+        const shapeCount = el.querySelectorAll('path, rect, circle, line, polygon, polyline, ellipse').length;
+        if (shapeCount < 5) continue;
       }
+
+      // canvas, .chart, [id*="chart"] 등은 클래스/태그 자체가 의미론적 근거이므로 크기 조건 없이 탐지
+      processedCharts.add(el);
+      reports.push(this.createReport(el, "검토 필요", "그래프나 차트 등 시각적 정보를 담은 콘텐츠가 탐지되었습니다. 데이터의 계열이나 값을 구분할 때 색상뿐만 아니라 패턴, 모양, 레이블 등 색에 무관하게 인식할 수 있는 수단이 함께 제공되는지 검토하세요."));
     }
 
     return reports;

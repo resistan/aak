@@ -23,23 +23,23 @@ class Processor131 {
     const tables = document.querySelectorAll('table');
     const reports = [];
 
-    console.log(`ABT: Found ${tables.length} raw table elements.`);
+    // console.log(`ABT: Found ${tables.length} raw table elements.`);
 
     for (const table of tables) {
       const role = table.getAttribute('role');
       if (['presentation', 'none'].includes(role)) {
-        console.log(`ABT: Skipping layout table (role="${role}"):`, this.utils.getSelector(table));
+        // console.log(`ABT: Skipping layout table (role="${role}"):`, this.utils.getSelector(table));
         continue;
       }
 
-      // isHidden이 너무 강력할 수 있으므로 로그 추가 및 조건 완화 고려
+      // isHidden이 너무 강력할 수 있으므로 조건 완화 고려
       if (this.utils.isHidden(table)) {
         const rect = table.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) {
-          console.log(`ABT: Skipping zero-size table:`, this.utils.getSelector(table));
+          // console.log(`ABT: Skipping zero-size table:`, this.utils.getSelector(table));
           continue;
         }
-        console.log(`ABT: Warning - table is considered hidden but has size:`, this.utils.getSelector(table));
+        // console.log(`ABT: Warning - table is considered hidden but has size:`, this.utils.getSelector(table));
       }
 
       reports.push(this.analyze(table));

@@ -33,7 +33,7 @@ class Processor143 {
       // 시각적으로 숨겨진 요소는 건너뜀
       if (this.utils.isHidden(el)) continue;
 
-      // 텍스트 노드가 없는 요소는 건너뜜 (이미지 등은 별도 처리 필요하지만 여기선 텍스트 위주)
+      // 텍스트 노드가 없는 요소는 건너뜀 (이미지 등은 별도 처리 필요하지만 여기선 텍스트 위주)
       // 텍스트 노드가 없는 요소는 건너뜀 (이미지 등은 별도 처리 필요하지만 여기선 텍스트 위주)
       const hasText = Array.from(el.childNodes).some(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0);
       if (!hasText) continue;
