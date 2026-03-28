@@ -64,15 +64,25 @@ class Processor311 {
 
         const normalizedLang = targetLang.trim().toLowerCase();
 
+        // 언어 코드 → 한국어 명칭 매핑
+        const langNames = {
+          'ko': '한국어', 'en': '영어', 'ja': '일본어', 'zh': '중국어',
+          'fr': '프랑스어', 'de': '독일어', 'es': '스페인어', 'it': '이탈리아어',
+          'pt': '포르투갈어', 'vi': '베트남어', 'th': '태국어', 'ru': '러시아어'
+        };
+        const primaryLang = normalizedLang.split('-')[0];
+
         if (!commonLangs.includes(normalizedLang)) {
           status = "검토 필요";
-          message = `lang 속성값("${targetLang}")이 일반적인 언어 코드 목록에 없습니다. 오타나 비표준 코드인지, 그리고 페이지 본문 언어와 일치하는지 확인하세요.`;
+          message = `lang="${targetLang}"가 감지되었습니다. 올바른 언어 코드인지 확인하세요.`;
           rules.push("Rule 3.1.1 (Uncommon lang code check)");
         } else {
-          // 기술적 유효성이 확인된 경우. 사용자의 요청에 따라 '검토 필요' 상태를 유지하여 본문 대조를 유도함.
+          const langName = langNames[primaryLang];
           status = "검토 필요";
-          message = `기본 언어 코드("${targetLang}")가 기술적으로 유효합니다. 실제 페이지 본문의 주요 언어와 일치하는지 최종 확인해 주세요.`;
-          rules.push("Rule 3.1.1 (Technical Validity Passed - Manual Content Check Required)");
+          message = langName
+            ? `${langName}(${targetLang})로 설정되어 있습니다. 실제 페이지 본문의 기본 언어가 맞는지 확인하세요.`
+            : `lang="${targetLang}"가 감지되었습니다. 실제 페이지 본문의 기본 언어가 맞는지 확인하세요.`;
+          rules.push("Rule 3.1.1 (Manual Content Check Required)");
         }
       }
     }

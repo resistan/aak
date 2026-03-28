@@ -26,6 +26,7 @@ export function useAudit(
 	const [lastTriggeredScanTime, setLastTriggeredScanTime] = useState<number>(0);
 	const [isAuditing, setIsAuditing] = useState(false);
 	const [currentGuideline, setCurrentGuideline] = useState<string | null>(null);
+	const [isReloadRequired, setIsReloadRequired] = useState(false);
 
 	// Track active tab (App.tsx 라인 108-140)
 	useEffect(() => {
@@ -107,6 +108,9 @@ export function useAudit(
 				setIsAuditing(false);
 				setSelectedSessionId(message.scanId);
 				setIsManualDashboard(false);
+			} else if (message.type === 'CONTEXT_INVALIDATED') {
+				setIsAuditing(false);
+				setIsReloadRequired(true);
 			}
 		};
 
@@ -150,6 +154,7 @@ export function useAudit(
 		lastTriggeredScanTime,
 		isAuditing,
 		currentGuideline,
+		isReloadRequired,
 
 		// Actions
 		handleStartAudit

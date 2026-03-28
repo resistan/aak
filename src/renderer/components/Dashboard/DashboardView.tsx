@@ -51,7 +51,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
 				<div className={styles.refreshNotice}>
 					<AlertCircle size={14} />
-					<span>정확한 진단을 위해 페이지를 <strong>새로고침</strong>한 후 시작해 주세요.</span>
+					<span>페이지 <strong>새로고침</strong> 후, 탭·아코디언 등 동적 콘텐츠는 <strong>펼친 뒤</strong> 시작하세요.</span>
 				</div>
 
 				<button

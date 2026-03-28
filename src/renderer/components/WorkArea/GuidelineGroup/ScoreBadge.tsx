@@ -31,7 +31,11 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 		const defaultVal = currentScore?.toString() || "";
 		const val = prompt(promptMsg, defaultVal);
 		if (val !== null && selectedSessionId) {
-			setGuidelineScore(selectedSessionId, gid, parseInt(val));
+			const trimmed = val.trim();
+			if (trimmed === "") return;
+			const num = parseInt(trimmed, 10);
+			if (isNaN(num) || num < 0 || num > 100) return;
+			setGuidelineScore(selectedSessionId, gid, num);
 		}
 	};
 

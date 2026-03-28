@@ -113,16 +113,7 @@ export function useSessionManager(items: ABTItem[]) {
 		});
 	};
 
-	// 에러 있는 그룹 자동 펼치기 (App.tsx 라인 361-369)
-	useEffect(() => {
-		const errorGids = allGroupedItems.filter(g => g.items.some(i => i.currentStatus === '오류')).map(g => g.gid);
-		if (errorGids.length > 0) {
-			setExpandedGroups(prev => {
-				const newGids = errorGids.filter(gid => !collapsedByUser.current.has(gid));
-				return [...new Set([...prev, ...newGids])];
-			});
-		}
-	}, [allGroupedItems]);
+	// 모든 그룹은 기본 접힘 상태로 시작 (자동 펼치기 없음)
 
 	// 세션 정리 (App.tsx 라인 232-240)
 	useEffect(() => {

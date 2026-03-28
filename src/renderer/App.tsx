@@ -73,6 +73,7 @@ const App = () => {
     lastTriggeredScanTime,
     isAuditing,
     currentGuideline,
+    isReloadRequired,
     handleStartAudit
   } = useAudit(
     addReport,
@@ -264,6 +265,11 @@ const App = () => {
         onGenerateReport={generateMarkdownReport}
       />
 
+      {isReloadRequired && (
+        <div style={{ padding: '12px 16px', background: '#fef3c7', borderBottom: '1px solid #f59e0b', color: '#92400e', fontSize: '0.85rem' }}>
+          ⚠️ 확장 프로그램이 업데이트되었습니다. <strong>페이지를 새로고침</strong>한 후 다시 진단해 주세요.
+        </div>
+      )}
       {isAuditing ? (
         <AuditingView currentGuideline={currentGuideline} />
       ) : !selectedSessionId ? (
@@ -314,7 +320,7 @@ const App = () => {
                     <div className={styles.headerRight}>
                       <ScoreBadge
                         gid={group.gid}
-                        items={group.items}
+                        items={baseFilteredItems.filter(i => i.guideline_id === group.gid)}
                         selectedSessionId={selectedSessionId}
                         setGuidelineScore={setGuidelineScore}
                       />
@@ -377,7 +383,11 @@ const App = () => {
                         resetFocusPath={resetFocusPath}
                       />
                       {group.items.length === 0 ? (
-                        <p className={styles.emptyState}>검출된 항목이 없습니다.</p>
+                        <p className={styles.emptyState}>
+                          {statusFilter !== 'ALL' && baseFilteredItems.some(i => i.guideline_id === group.gid)
+                            ? '현재 필터에 해당하는 항목이 없습니다.'
+                            : '검출된 항목이 없습니다.'}
+                        </p>
                       ) : (
                         group.items.map((item) => (
                           <ItemCard

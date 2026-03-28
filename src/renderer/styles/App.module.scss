@@ -306,8 +306,9 @@
     background: $bg-s;
     border-bottom: 1px solid $border;
     color: $text-d;
+    overflow: hidden;
     select {
-      background: $bg-s; border: none; color: $text; font-size: $text-xs; font-weight: 700; cursor: pointer; outline: none; flex: 1;
+      background: $bg-s; border: none; color: $text; font-size: $text-xs; font-weight: 700; cursor: pointer; outline: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
       option { background: $bg-s; color: $text; }
     }
   }

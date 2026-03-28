@@ -18,12 +18,14 @@ class ABTCore {
   */
   async loadStandards() {
     try {
-      // 확장 프로그램 내 리소스 경로에서 로드 (Vite/Manifest 환경 고려)
-      const response = await fetch(chrome.runtime.getURL('src/engine/kwcag-standards.json'));
+      const url = chrome.runtime.getURL('src/engine/kwcag-standards.json');
+      // 컨텍스트 무효화 시 getURL이 'chrome-extension://invalid/...' 반환
+      if (!url || url.includes('//invalid')) return;
+      const response = await fetch(url);
       this.standards = await response.json();
       // console.log("ABT: KWCAG Standards loaded.", this.standards.version);
     } catch (error) {
-      console.error("ABT: Failed to load standards JSON. Falling back to basic info.", error);
+      // 표준 데이터 없이도 스캔 진행 가능, 에러 로그 생략
     }
   }
 
@@ -45,12 +47,20 @@ class ABTCore {
   * 등록된 모든 프로세서를 실행하여 통합 진단을 수행합니다.
   */
   async runFullAudit() {
+    // 확장 프로그램 컨텍스트 유효성 검사 (업데이트 후 페이지 미새로고침 감지)
+    if (!chrome.runtime.id) {
+      console.error("ABT: Extension context invalidated. Please reload the page.");
+      this.connector.send({ type: 'CONTEXT_INVALIDATED' });
+      return;
+    }
+
     if (!this.connector || !this.connector.isConnected) {
       console.warn("ABT: Desktop 앱과 연결되어 있지 않습니다.");
     }
 
     // console.log("ABT: Starting Full Audit...");
     let totalIssues = 0;
+    const allBatchItems = []; // 전체 결과 누적 (메시지 유실 방지)
 
     const pageInfo = {
       url: window.location.href || "Unknown URL",
@@ -122,7 +132,7 @@ class ABTCore {
           });
 
           if (batch.length > 0) {
-            this.connector.sendBatch(batch);
+            allBatchItems.push(...batch);
             totalIssues += batch.length;
           }
         }
@@ -132,6 +142,12 @@ class ABTCore {
 
       // 프로세서 간 메인 스레드 양보 (UI 인터랙션 보장)
       await yieldToMain();
+    }
+
+    // 전체 결과를 청크 단위로 일괄 전송 (스트리밍 전송 시 메시지 유실 방지)
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < allBatchItems.length; i += CHUNK_SIZE) {
+      this.connector.sendBatch(allBatchItems.slice(i, i + CHUNK_SIZE));
     }
     // 모든 지침 진단 완료 신호 전송
     this.connector.send({

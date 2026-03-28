@@ -1,10 +1,10 @@
 {
   "name": "aak-extension",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A11Y Assistant for KWCAG",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp src/extension/manifest.json dist/ && cp -r src/extension/icons dist/"
+    "build": "vite build && cp src/extension/manifest.json dist/ && cp -r src/extension/icons dist/ && mkdir -p dist/src/engine && cp src/engine/kwcag-standards.json dist/src/engine/"
   },
   "dependencies": {
     "lucide-react": "^0.284.0",
