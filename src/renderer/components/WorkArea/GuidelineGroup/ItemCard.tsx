@@ -141,13 +141,13 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 										backgroundColor: (item.context as any).backgroundColor
 									}}
 								>
-									Aa 가나다 (Text: {(item.context as any).color} / BG: {(item.context as any).backgroundColor})
+									Aa 가나다 (글자색: {(item.context as any).color} / 배경색: {(item.context as any).backgroundColor})
 								</div>
 							)}
 
 							{/* 마크업 스니펫 또는 셀렉터 */}
 							{item.elementInfo.selector === 'outline' ? (
-								<span className={styles.outlineLabel}>Heading Outline</span>
+								<span className={styles.outlineLabel}>제목 구조</span>
 							) : item.elementInfo.openingTag ? (
 								<code className={styles.markupTag}>{item.elementInfo.openingTag}</code>
 							) : (

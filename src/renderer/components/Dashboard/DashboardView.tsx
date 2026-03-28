@@ -39,7 +39,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 				<div className={styles.heroIcon}>
 					<Scan size={48} />
 				</div>
-				<h2>Ready to Audit</h2>
+				<h2>진단 준비 완료</h2>
 				<p>현재 페이지의 접근성을 진단합니다.</p>
 
 				{currentTabInfo && (
@@ -60,7 +60,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 					disabled={isAuditing}
 					aria-label="진단 시작"
 				>
-					{isAuditing ? '진단 중...' : '진단 시작 (Start Audit)'}
+					{isAuditing ? '진단 중...' : '진단 시작'}
 				</button>
 
 				{sessions.length > 0 && (

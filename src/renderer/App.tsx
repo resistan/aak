@@ -280,7 +280,7 @@ const App = () => {
         <div className={styles.workArea}>
           <SessionSelector
             selectedSessionId={selectedSessionId}
-            setSelectedSessionId={setSelectedSessionId}
+            setSelectedSessionId={handleSelectSession}
             sessions={sessions}
           />
 

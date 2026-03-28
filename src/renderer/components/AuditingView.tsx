@@ -15,7 +15,7 @@ export const AuditingView: React.FC<AuditingViewProps> = ({
 				<div className={styles.heroIcon} style={{ animationDuration: '1s' }}>
 					<RotateCcw size={48} />
 				</div>
-				<h2>Precision Audit in Progress</h2>
+				<h2>정밀 진단 중</h2>
 				{currentGuideline && (
 					<p style={{ color: 'var(--accent-highlight)', fontWeight: 'bold', fontSize: '1rem', margin: '0.8rem 0' }}>
 						검사항목 {currentGuideline} 분석 중...

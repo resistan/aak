@@ -23,6 +23,9 @@ export const Header: React.FC<HeaderProps> = ({
 	onGoHome,
 	onGenerateReport
 }) => {
+	const version = typeof chrome !== 'undefined' && chrome.runtime
+		? chrome.runtime.getManifest().version
+		: '';
 	const handleReturnToSidePanel = () => {
 		if (typeof chrome !== 'undefined' && chrome.sidePanel) {
 			const targetWinId = sourceWindowId || chrome.windows.WINDOW_ID_CURRENT;
@@ -52,8 +55,8 @@ export const Header: React.FC<HeaderProps> = ({
 			<div className={styles.brand}>
 				<ActivitySquare size={18} className={styles.logo} />
 				<div className={styles.titleInfo}>
-					<h1>A11Y Assistant</h1>
-					<span>{isPopup ? 'Window' : 'Extension'}</span>
+					<h1>A11Y Assistant for KWCAG</h1>
+					<span>{isPopup ? '별도 창' : `v${version}`}</span>
 				</div>
 			</div>
 			<div className={styles.headerActions}>
