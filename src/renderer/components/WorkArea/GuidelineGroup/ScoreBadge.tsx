@@ -25,14 +25,15 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 
 	const handleScoreEdit = (e: React.MouseEvent | React.KeyboardEvent, currentScore?: number) => {
 		e.stopPropagation();
-		const promptMsg = currentScore !== undefined
-			? `점수 입력 (0-100):`
-			: "수동 검사 점수 입력 (0-100):";
-		const defaultVal = currentScore?.toString() || "";
-		const val = prompt(promptMsg, defaultVal);
+		const defaultVal = currentScore === -1 ? "na" : currentScore?.toString() || "";
+		const val = prompt("점수 입력 (0-100), 해당 사항 없음은 'na' 입력:", defaultVal);
 		if (val !== null && selectedSessionId) {
-			const trimmed = val.trim();
+			const trimmed = val.trim().toLowerCase();
 			if (trimmed === "") return;
+			if (trimmed === "na") {
+				setGuidelineScore(selectedSessionId, gid, -1);
+				return;
+			}
 			const num = parseInt(trimmed, 10);
 			if (isNaN(num) || num < 0 || num > 100) return;
 			setGuidelineScore(selectedSessionId, gid, num);
@@ -41,6 +42,24 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
 
 	// 수동 점수가 있는 경우
 	if (manualScore !== undefined) {
+		if (manualScore === -1) {
+			return (
+				<span
+					className={styles.naBadge}
+					onClick={(e) => handleScoreEdit(e, manualScore)}
+					onKeyDown={(e) => {
+						e.stopPropagation();
+						handleKeyDown(e, () => handleScoreEdit(e, manualScore));
+					}}
+					tabIndex={0}
+					role="button"
+					title="클릭하여 점수를 수정할 수 있습니다."
+					aria-label="N/A (수동), 수정하려면 클릭"
+				>
+					N/A (수동)
+				</span>
+			);
+		}
 		return (
 			<span
 				className={`${styles.scoreBadge} ${manualScore < 60 ? styles.bad : manualScore < 90 ? styles.warning : styles.good}`}
