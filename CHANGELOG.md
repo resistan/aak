@@ -4,6 +4,13 @@
 
 ---
 
+## [0.7.1] - 2026-04-03
+
+### 오류 수정
+- 1.1.1 대체 텍스트: `<svg aria-hidden="true">` + `.sr-only`·`.blind` 등 CSS 숨김 텍스트 형제 요소를 포함한 링크/버튼을 "오류"로 잘못 판정하던 버그 수정 (`getFunctionalContext` `innerText` 누락 → `isImageReplacement()` 폴백)
+
+---
+
 ## [0.7.1] - 2026-03-28
 
 ### 오류 수정

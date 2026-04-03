@@ -200,10 +200,23 @@ class Processor111 {
 
   getFunctionalContext(el) {
     const parent = el.closest('a, button, [role="button"], [role="link"]');
+    let parentText = '';
+    if (parent) {
+      parentText = parent.innerText.replace(/\s+/g, ' ').trim();
+      // innerText가 시각적으로 숨겨진 텍스트를 놓치는 경우
+      // isImageReplacement로 CSS 패턴 기반 감지 (클래스명 무관)
+      if (!parentText) {
+        Array.from(parent.children).forEach(child => {
+          if (child !== el && !parentText && this.utils.isImageReplacement(child)) {
+            parentText = (child.textContent || '').replace(/\s+/g, ' ').trim();
+          }
+        });
+      }
+    }
     return {
       isFunctional: !!parent,
       parentTag: parent ? parent.tagName.toLowerCase() : null,
-      parentText: parent ? parent.innerText.replace(/\s+/g, ' ').trim() : ""
+      parentText: parentText
     };
   }
 
